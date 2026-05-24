@@ -36,6 +36,10 @@ app.get('/', (req, res) => {
   res.json({ message: 'Cvraft API running ✅' });
 });
 
+// Auth Routes
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
 // MongoDB Connection with Retry Logic
 const connectDB = async () => {
   const fallbackUri = 'mongodb+srv://cvraft_admin:9KJoIjjbaPEMsYKN@cvraft.3rjf1zw.mongodb.net/cvraft?retryWrites=true&w=majority&appName=Cvraft';
