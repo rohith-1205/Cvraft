@@ -40,6 +40,10 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
+// Resume Routes
+const resumeRoutes = require('./routes/resume');
+app.use('/api/resume', resumeRoutes);
+
 // MongoDB Connection with Retry Logic
 const connectDB = async () => {
   const fallbackUri = 'mongodb+srv://cvraft_admin:9KJoIjjbaPEMsYKN@cvraft.3rjf1zw.mongodb.net/cvraft?retryWrites=true&w=majority&appName=Cvraft';
