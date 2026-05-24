@@ -1,5 +1,6 @@
 const Resume = require('../models/Resume');
 const { structureResumeData } = require('../services/claudeService');
+const { buildLatexCode, compileToPDF } = require('../services/latexService');
 
 // POST /api/resume/generate
 const generateResume = async (req, res) => {
@@ -13,35 +14,49 @@ const generateResume = async (req, res) => {
       });
     }
 
+    // Step 1 — Claude structures raw text
     console.log('📤 Sending to Claude API...');
     const structuredData = await structureResumeData(rawText);
     console.log('✅ Claude returned structured data');
 
+    // Step 2 — Build LaTeX code
+    console.log('📝 Building LaTeX code...');
+    const latexCode = buildLatexCode(structuredData);
+    console.log('✅ LaTeX code built');
+
+    // Step 3 — Compile to PDF
+    console.log('📄 Compiling PDF...');
+    const pdfBuffer = await compileToPDF(latexCode);
+    console.log('✅ PDF compiled:', pdfBuffer.length, 'bytes');
+
+    // Step 4 — Save to MongoDB
     const resume = await Resume.create({
       userId: req.user._id,
       rawInput: rawText,
       structuredData,
-      templateId: templateId || 'T001'
+      templateId: templateId || 'T001',
+      latexCode,
+      paymentStatus: 'pending'
     });
 
     console.log('✅ Resume saved to MongoDB:', resume._id);
 
-    res.status(201).json({
-      success: true,
-      message: 'Resume structured successfully',
-      resumeId: resume._id,
-      structuredData
+    // Step 5 — Send PDF back to frontend
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="cvraft_preview_${resume._id}.pdf"`,
+      'X-Resume-Id': resume._id.toString(),
+      'X-Structured-Data': JSON.stringify(structuredData)
     });
+
+    res.send(pdfBuffer);
 
   } catch (err) {
     console.error('❌ Error:', err.message);
-    if (err instanceof SyntaxError) {
-      return res.status(500).json({ success: false, message: 'Failed to parse Claude response' });
-    }
-    if (err.response?.status === 401) {
-      return res.status(500).json({ success: false, message: 'Invalid Claude API key' });
-    }
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message || 'Server error'
+    });
   }
 };
 
@@ -60,9 +75,45 @@ const getAllResumes = async (req, res) => {
 // GET /api/resume/:id
 const getResume = async (req, res) => {
   try {
-    const resume = await Resume.findOne({ _id: req.params.id, userId: req.user._id });
-    if (!resume) return res.status(404).json({ success: false, message: 'Resume not found' });
+    const resume = await Resume.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    if (!resume) {
+      return res.status(404).json({ success: false, message: 'Resume not found' });
+    }
     res.status(200).json({ success: true, resume });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// GET /api/resume/:id/pdf — Download PDF for paid resume
+const downloadPDF = async (req, res) => {
+  try {
+    const resume = await Resume.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+
+    if (!resume) {
+      return res.status(404).json({ success: false, message: 'Resume not found' });
+    }
+
+    if (resume.paymentStatus !== 'completed') {
+      return res.status(403).json({ success: false, message: 'Payment required to download' });
+    }
+
+    // Recompile PDF from saved LaTeX
+    const pdfBuffer = await compileToPDF(resume.latexCode);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="cvraft_${resume._id}.pdf"`
+    });
+
+    res.send(pdfBuffer);
+
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
@@ -71,12 +122,17 @@ const getResume = async (req, res) => {
 // DELETE /api/resume/:id
 const deleteResume = async (req, res) => {
   try {
-    const resume = await Resume.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
-    if (!resume) return res.status(404).json({ success: false, message: 'Resume not found' });
+    const resume = await Resume.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    if (!resume) {
+      return res.status(404).json({ success: false, message: 'Resume not found' });
+    }
     res.status(200).json({ success: true, message: 'Resume deleted' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-module.exports = { generateResume, getAllResumes, getResume, deleteResume };
+module.exports = { generateResume, getAllResumes, getResume, downloadPDF, deleteResume };
