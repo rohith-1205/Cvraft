@@ -1,4 +1,5 @@
 require('dotenv').config();
+console.log('Razorpay Key loaded:', !!process.env.RAZORPAY_KEY_ID);
 const dns = require('dns');
 
 // Configure Node.js to use Google and Cloudflare DNS servers
@@ -43,6 +44,10 @@ app.use('/api/auth', authRoutes);
 // Resume Routes
 const resumeRoutes = require('./routes/resume');
 app.use('/api/resume', resumeRoutes);
+
+// Payment Routes
+const paymentRoutes = require('./routes/payment');
+app.use('/api/payment', paymentRoutes);
 
 // MongoDB Connection with Retry Logic
 const connectDB = async () => {
