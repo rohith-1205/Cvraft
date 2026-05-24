@@ -8,9 +8,9 @@ const useResumeStore = create((set) => ({
   // Resume
   rawText: '',
   selectedTemplate: 'T001',
-  resumeData: null,
-  previewUrl: null,
   currentResumeId: null,
+  structuredData: null,
+  pdfBlob: null,
 
   // UI
   isLoading: false,
@@ -28,9 +28,9 @@ const useResumeStore = create((set) => ({
   },
   setRawText: (text) => set({ rawText: text }),
   setSelectedTemplate: (id) => set({ selectedTemplate: id }),
-  setResumeData: (data) => set({ resumeData: data }),
-  setPreviewUrl: (url) => set({ previewUrl: url }),
   setCurrentResumeId: (id) => set({ currentResumeId: id }),
+  setStructuredData: (data) => set({ structuredData: data }),
+  setPdfBlob: (blob) => set({ pdfBlob: blob }),
   setLoading: (bool) => set({ isLoading: bool }),
   setError: (msg) => set({ error: msg }),
 }));
