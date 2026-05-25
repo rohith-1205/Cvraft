@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import useResumeStore from '../store/resumeStore';
 import ResumeCard from '../components/ResumeCard';
 import Spinner from '../components/Spinner';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const { user, token } = useResumeStore();
+  const { user } = useResumeStore();
 
   const [resumes, setResumes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -15,21 +14,21 @@ const Dashboard = () => {
   const [deleteId, setDeleteId] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  useEffect(() => {
-    fetchResumes();
-  }, []);
-
-  const fetchResumes = async () => {
-    setIsLoading(true);
+  const fetchResumes = useCallback(async () => {
     try {
       const res = await api.get('/api/resume/all');
       setResumes(res.data.resumes || []);
-    } catch (err) {
+    } catch {
       setError('Failed to load resumes. Please refresh.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchResumes();
+  }, [fetchResumes]);
 
   const handleDeleteClick = (id) => {
     setDeleteId(id);
@@ -42,7 +41,7 @@ const Dashboard = () => {
       setResumes(resumes.filter(r => r._id !== deleteId));
       setShowConfirm(false);
       setDeleteId(null);
-    } catch (err) {
+    } catch {
       setError('Failed to delete resume.');
     }
   };
@@ -98,118 +97,76 @@ const Dashboard = () => {
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600
-            text-sm rounded-xl px-4 py-3 mb-6">
-            ⚠️ {error}
+            px-4 py-3 rounded-xl mb-8 flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="font-bold">×</button>
           </div>
         )}
 
-        {/* Loading */}
+        {/* Main Content */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
+          <div className="flex justify-center py-20">
             <Spinner size="lg" />
-            <p className="text-gray-400 mt-4 text-sm">Loading your resumes...</p>
           </div>
         ) : resumes.length === 0 ? (
-
-          /* Empty State */
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">📄</div>
+          <div className="text-center py-20 bg-white rounded-3xl border
+            border-dashed border-gray-200">
+            <div className="text-5xl mb-4">✍️</div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">
               No resumes yet
             </h3>
-            <p className="text-gray-500 mb-6">
-              Build your first resume in 60 seconds!
+            <p className="text-gray-500 mb-8">
+              Start building your first professional resume in seconds.
             </p>
             <Link
               to="/build"
-              className="bg-blue-600 text-white px-8 py-3 rounded-xl
-              font-semibold hover:bg-blue-700 transition shadow-md">
-              Build My Resume →
+              className="inline-block bg-blue-600 text-white px-8 py-3
+              rounded-xl font-semibold hover:bg-blue-700 transition">
+              Create My First Resume
             </Link>
           </div>
-
         ) : (
-
-          /* Resume Grid */
-          <div>
-            {/* Purchased */}
-            {purchased.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex
-                  items-center gap-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"/>
-                  Purchased Resumes
-                </h2>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {purchased.map(resume => (
-                    <ResumeCard
-                      key={resume._id}
-                      resume={resume}
-                      onDelete={handleDeleteClick}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Previews */}
-            {previews.length > 0 && (
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex
-                  items-center gap-2">
-                  <span className="w-2 h-2 bg-yellow-400 rounded-full"/>
-                  Preview Only
-                  <span className="text-xs font-normal text-gray-400 ml-1">
-                    — Pay to unlock download
-                  </span>
-                </h2>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {previews.map(resume => (
-                    <ResumeCard
-                      key={resume._id}
-                      resume={resume}
-                      onDelete={handleDeleteClick}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Delete Confirm Modal */}
-        {showConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex
-            items-center justify-center z-50 px-6">
-            <div className="bg-white rounded-2xl p-8 max-w-sm w-full
-              shadow-xl text-center">
-              <div className="text-4xl mb-4">🗑️</div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Delete Resume?
-              </h3>
-              <p className="text-gray-500 text-sm mb-6">
-                This action cannot be undone. The resume will be
-                permanently deleted.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  className="flex-1 py-3 rounded-xl border-2 border-gray-200
-                  text-gray-600 font-semibold hover:bg-gray-50 transition">
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  className="flex-1 py-3 rounded-xl bg-red-500
-                  hover:bg-red-600 text-white font-semibold transition">
-                  Delete
-                </button>
-              </div>
-            </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {resumes.map((resume) => (
+              <ResumeCard
+                key={resume._id}
+                resume={resume}
+                onDelete={handleDeleteClick}
+              />
+            ))}
           </div>
         )}
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center
+          justify-center z-50 p-6">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-8 shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">
+              Are you sure?
+            </h3>
+            <p className="text-gray-500 text-center mb-8">
+              This will permanently delete your resume. This action cannot be undone.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl
+                font-semibold hover:bg-gray-200 transition">
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-red-600 text-white py-3 rounded-xl
+                font-semibold hover:bg-red-700 transition">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

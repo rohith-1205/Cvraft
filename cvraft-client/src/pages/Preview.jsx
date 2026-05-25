@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import useResumeStore from '../store/resumeStore';
 import { usePricing, formatPrice } from '../utils/pricing';
 
 const Preview = () => {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const { token } = useResumeStore();
 
@@ -22,13 +21,49 @@ const Preview = () => {
   // Detect country and get localized pricing — Razorpay still charges INR internally
   const { pricing, isLoading: isPricingLoading } = usePricing();
 
+  const fetchPreview = useCallback(async () => {
+    try {
+      const response = await api.get(
+        `/api/resume/${id}/preview`,
+        { responseType: 'blob' }
+      );
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      setPdfUrl(url);
+    } catch (err) {
+      console.error('Preview fetch error:', err);
+    }
+  }, [id]);
+
+  const checkPaymentStatus = useCallback(async () => {
+    try {
+      const res = await api.get(`/api/payment/status/${id}`);
+      setIsPaid(res.data.isPaid);
+      setRemainingDownloads(res.data.remainingDownloads || 0);
+      setHasCoverLetter(res.data.hasCoverLetter || false);
+
+      if (res.data.isPaid && res.data.hasCoverLetter) {
+        const resumeRes = await api.get(`/api/resume/${id}`);
+        if (resumeRes.data.resume?.coverLetterText) {
+          setCoverLetterText(resumeRes.data.resume.coverLetterText);
+        }
+      }
+    } catch (err) {
+      console.error('Status check error:', err);
+    }
+  }, [id]);
+
   // Load Razorpay script
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     document.body.appendChild(script);
-    return () => document.body.removeChild(script);
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
   }, []);
 
   // Fetch watermarked preview and check status
@@ -38,10 +73,11 @@ const Preview = () => {
       return;
     }
     if (id && id !== 'undefined') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchPreview();
       checkPaymentStatus();
     }
-  }, [id]);
+  }, [id, token, navigate, fetchPreview, checkPaymentStatus]);
 
   // Disable Right Click & Screenshot Shortcuts for Unpaid users
   useEffect(() => {
@@ -67,57 +103,6 @@ const Preview = () => {
       };
     }
   }, [isPaid]);
-
-  const fetchPreview = async () => {
-    try {
-      const response = await api.get(
-        `/api/resume/${id}/preview`,
-        { responseType: 'blob' }
-      );
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
-    } catch (err) {
-      console.error('Preview fetch error:', err);
-    }
-  };
-
-  const checkPaymentStatus = async () => {
-    try {
-      const res = await api.get(`/api/payment/status/${id}`);
-      setIsPaid(res.data.isPaid);
-      setRemainingDownloads(res.data.remainingDownloads || 0);
-      setHasCoverLetter(res.data.hasCoverLetter || false);
-
-      if (res.data.isPaid && res.data.hasCoverLetter) {
-        const resumeRes = await api.get(`/api/resume/${id}`);
-        if (resumeRes.data.resume?.coverLetterText) {
-          setCoverLetterText(resumeRes.data.resume.coverLetterText);
-        }
-      }
-    } catch (err) {
-      console.error('Status check error:', err);
-    }
-  };
-
-  const handleUnlockWithBundle = async () => {
-    setIsPayLoading(true);
-    setError('');
-    try {
-      const res = await api.post('/api/payment/unlock-with-bundle', {
-        resumeId: id
-      });
-      if (res.data.success) {
-        setIsPaid(true);
-        fetchPreview();
-        checkPaymentStatus();
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to unlock resume using bundle.');
-    } finally {
-      setIsPayLoading(false);
-    }
-  };
 
   const handleDownloadPDF = async () => {
     try {
@@ -217,7 +202,7 @@ const Preview = () => {
               setIsPaid(true);
               navigate('/success', { state: { resumeId: id } });
             }
-          } catch (err) {
+          } catch {
             setError('Payment verification failed. Contact support.');
           }
         },
@@ -296,193 +281,121 @@ const Preview = () => {
                   <div className="text-center">
                     <div className="text-4xl mb-3">📄</div>
                     <p>No preview available</p>
-                    <button
-                      onClick={() => navigate('/build')}
-                      className="mt-4 text-blue-600 hover:underline text-sm">
-                      ← Go back to Builder
-                    </button>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Panel */}
-          <div className="space-y-4">
-
-            {/* Status Card */}
-            <div className={`rounded-2xl p-5 border-2 ${isPaid
-              ? 'bg-green-50 border-green-200'
-              : 'bg-blue-50 border-blue-200'}`}>
-              <div className="text-2xl mb-2">{isPaid ? '✅' : '🔒'}</div>
-              <h3 className="font-bold text-gray-900 mb-1">
-                {isPaid ? 'Resume Unlocked!' : 'Preview Mode'}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {isPaid
-                  ? 'Your resume is ready to download as a clean PDF.'
-                  : 'This is a watermarked preview. Pay to get the clean download.'}
-              </p>
-            </div>
-
-            {/* Download Button for Paid Users */}
-            {isPaid && (
-              <button
-                onClick={handleDownloadPDF}
-                className="w-full py-3.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-base transition shadow-md flex items-center justify-center gap-2"
-              >
-                📥 Download Resume PDF
-              </button>
-            )}
-
-            {/* Cover Letter Section */}
-            {isPaid && hasCoverLetter && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-                <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <span>✉️</span> Cover Letter
-                </h3>
-                {coverLetterText ? (
-                  <div className="space-y-3">
-                    <p className="text-xs text-gray-500">
-                      Your AI-generated cover letter matching your theme is ready!
-                    </p>
-                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 max-h-40 overflow-y-auto text-xs text-gray-600 font-mono leading-relaxed whitespace-pre-line select-text">
-                      {coverLetterText}
+          {/* Sidebar */}
+          <div className="space-y-6">
+            
+            {/* Payment / Download Box */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              {isPaid ? (
+                <div className="space-y-4">
+                  <div className="bg-green-50 text-green-700 p-4 rounded-xl text-center">
+                    <p className="font-bold text-lg">Resume Unlocked!</p>
+                    <p className="text-sm">You have {remainingDownloads} downloads left.</p>
+                  </div>
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="w-full bg-blue-600 text-white py-4 rounded-xl
+                    font-bold text-lg hover:bg-blue-700 transition shadow-lg
+                    flex items-center justify-center gap-2">
+                    <span>⬇️</span> Download PDF
+                  </button>
+                  
+                  {/* Cover Letter Section for Pro/Bundle */}
+                  {hasCoverLetter && (
+                    <div className="pt-4 border-t border-gray-100">
+                      <h4 className="font-bold text-gray-900 mb-3">Cover Letter</h4>
+                      {coverLetterText ? (
+                        <div className="space-y-3">
+                          <div className="bg-gray-50 p-3 rounded-lg text-xs
+                            text-gray-600 max-h-32 overflow-y-auto">
+                            {coverLetterText}
+                          </div>
+                          <button
+                            onClick={handleDownloadCoverLetter}
+                            className="w-full bg-indigo-600 text-white py-3 rounded-xl
+                            font-semibold hover:bg-indigo-700 transition flex
+                            items-center justify-center gap-2">
+                            <span>📄</span> Download CL
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleGenerateCoverLetter}
+                          disabled={isCoverLetterLoading}
+                          className="w-full border-2 border-indigo-600 text-indigo-600
+                          py-3 rounded-xl font-semibold hover:bg-indigo-50
+                          transition disabled:opacity-50">
+                          {isCoverLetterLoading ? 'Generating...' : '✨ Generate AI Cover Letter'}
+                        </button>
+                      )}
                     </div>
-                    <button
-                      onClick={handleDownloadCoverLetter}
-                      className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition shadow-sm flex items-center justify-center gap-2"
-                    >
-                      📥 Download Cover Letter PDF
-                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <p className="text-gray-400 text-sm mb-2">Unlock your resume</p>
+                    <div className="text-3xl font-extrabold text-gray-900">
+                      {isPricingLoading ? '...' : formatPrice(pricing.plans.pro.displayAmount, pricing.currency, pricing.locale)}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">one-time payment</p>
                   </div>
-                ) : (
+
                   <div className="space-y-3">
-                    <p className="text-xs text-gray-500">
-                      Generate a professional, matching cover letter based on your resume details.
-                    </p>
                     <button
-                      onClick={handleGenerateCoverLetter}
-                      disabled={isCoverLetterLoading}
-                      className={`w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition shadow-sm ${isCoverLetterLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {isCoverLetterLoading ? 'Generating Cover Letter...' : '✨ Generate Cover Letter'}
+                      onClick={() => handlePayment('pro')}
+                      disabled={isPayLoading}
+                      className="w-full bg-blue-600 text-white py-4 rounded-xl
+                      font-bold text-lg hover:bg-blue-700 transition shadow-lg
+                      disabled:opacity-50">
+                      {isPayLoading ? 'Processing...' : 'Unlock Now'}
+                    </button>
+                    
+                    {/* Bundle Option */}
+                    <button
+                      onClick={() => handlePayment('bundle')}
+                      disabled={isPayLoading}
+                      className="w-full bg-purple-600 text-white py-3 rounded-xl
+                      font-semibold hover:bg-purple-700 transition text-sm
+                      disabled:opacity-50">
+                      Get Bundle (3 Resumes + CL)
                     </button>
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* Bundle Unlock Card */}
-            {!isPaid && remainingDownloads > 0 && (
-              <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg space-y-3">
-                <div className="text-2xl">🎉</div>
-                <h3 className="font-bold text-lg">Bundle Active</h3>
-                <p className="text-xs text-purple-100">
-                  You have <strong>{remainingDownloads} unused downloads</strong> remaining in your account bundle!
-                </p>
-                <button
-                  onClick={handleUnlockWithBundle}
-                  disabled={isPayLoading}
-                  className="w-full py-3 rounded-xl bg-white hover:bg-purple-50 text-indigo-700 font-bold text-sm transition shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  🔓 Unlock This Resume (Uses 1)
-                </button>
-              </div>
-            )}
+                  <ul className="space-y-2">
+                    {['Clean PDF Export', 'ATS Optimized', 'Priority Support'].map(f => (
+                      <li key={f} className="flex items-center gap-2 text-xs text-gray-500">
+                        <span className="text-green-500">✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
 
-            {/* Plans */}
-            {!isPaid && remainingDownloads === 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100
-                shadow-sm p-5 space-y-3">
-                <h3 className="font-bold text-gray-900 mb-1">
-                  Choose Your Plan
-                </h3>
-                <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-                  💳 Select a plan below to proceed to secure checkout and download your clean, watermark-free PDF.
-                </p>
-
-                {[
-                  { plan: 'basic',  label: 'Basic',
-                    desc: '1 resume, 3 templates' },
-                  { plan: 'pro',    label: 'Pro ⭐',
-                    desc: 'All templates + ATS score', popular: true },
-                  { plan: 'bundle', label: 'Bundle',
-                    desc: '3 resumes + cover letter' }
-                ].map((p) => {
-                  // Display localized price; Razorpay always receives INR paise internally
-                  const planPricing = pricing.plans[p.plan];
-                  const displayPrice = isPricingLoading
-                    ? '...'
-                    : formatPrice(planPricing.displayAmount, pricing.currency, pricing.locale);
-
-                  return (
-                    <button
-                      key={p.plan}
-                      onClick={() => handlePayment(p.plan)}
-                      disabled={isPayLoading}
-                      className={`w-full py-3 px-4 rounded-xl font-semibold
-                      text-sm transition flex justify-between items-center
-                      ${p.popular
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                        : 'bg-gray-50 hover:bg-gray-100 text-gray-800 border border-gray-200'
-                      } ${isPayLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                      <span>{p.label}</span>
-                      <div className="text-right">
-                        {/* Localized display price — Razorpay internally charges INR */}
-                        <div className="font-bold">
-                          {isPricingLoading
-                            ? <span className="inline-block w-12 h-4 bg-current opacity-20 rounded animate-pulse" />
-                            : displayPrice
-                          }
-                        </div>
-                        <div className={`text-xs ${p.popular ? 'text-blue-200' : 'text-gray-400'}`}>
-                          {p.desc}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {/* International pricing disclaimer */}
-                <p className="text-[10px] text-gray-400 text-center pt-1">
-                  🌍 Secure international payments supported. Final charged amount
-                  may vary slightly based on exchange rates.
-                </p>
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600
-                text-sm rounded-xl px-4 py-3">
-                ⚠️ {error}
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="space-y-2">
-              <button
-                onClick={() => navigate('/build')}
-                className="w-full py-3 rounded-xl border-2 border-white/20
-                text-white font-semibold hover:bg-white/10 transition text-sm">
-                ← Edit Resume
-              </button>
-              {token && (
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="w-full py-3 rounded-xl border-2 border-white/20
-                  text-white font-semibold hover:bg-white/10 transition text-sm">
-                  📁 My Resumes
-                </button>
+                  {/* Error Message */}
+                  {error && (
+                    <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs text-center">
+                      {error}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* Trust badges */}
-            <div className="bg-white rounded-xl p-4 text-center space-y-1">
-              <p className="text-xs text-gray-500">🔒 Secured by Razorpay</p>
-              <p className="text-xs text-gray-500">✅ UPI · Cards · Net Banking</p>
-              <p className="text-xs text-gray-500">💯 Instant PDF delivery</p>
+            {/* Help Box */}
+            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+              <h4 className="font-bold text-gray-900 mb-2">Need help?</h4>
+              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                If you face any issues during payment or download, reach out to our support.
+              </p>
+              <a href="mailto:synchabit@gmail.com"
+                className="text-blue-600 text-xs font-semibold hover:underline">
+                synchabit@gmail.com
+              </a>
             </div>
 
           </div>

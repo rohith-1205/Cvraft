@@ -17,11 +17,34 @@ const Footer = () => {
             </span>
           </div>
 
-          {/* Links */}
-          <div className="flex gap-6 text-sm">
-            <Link to="/pricing" className="hover:text-white transition">Pricing</Link>
-            <Link to="/login"   className="hover:text-white transition">Login</Link>
-            <Link to="/register" className="hover:text-white transition">Register</Link>
+          {/* Product */}
+          <div>
+            <h4 className="text-white font-semibold text-sm mb-4">Product</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/" className="hover:text-white transition">Home</Link></li>
+              <li><Link to="/pricing" className="hover:text-white transition">Pricing</Link></li>
+              <li><Link to="/about" className="hover:text-white transition">About</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition">Contact</Link></li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="text-white font-semibold text-sm mb-4">Legal</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-white transition">Terms & Conditions</Link></li>
+              <li><Link to="/refund-policy" className="hover:text-white transition">Refund Policy</Link></li>
+            </ul>
+          </div>
+
+          {/* Support */}
+          <div>
+            <h4 className="text-white font-semibold text-sm mb-4">Support</h4>
+            <ul className="space-y-2 text-sm">
+              <li><a href="mailto:synchabit@gmail.com" className="hover:text-white transition">Email Support</a></li>
+              <li><Link to="/contact" className="hover:text-white transition">Contact Form</Link></li>
+            </ul>
           </div>
 
         </div>

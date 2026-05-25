@@ -11,7 +11,7 @@ const Success = () => {
 
   useEffect(() => {
     if (!resumeId) navigate('/dashboard');
-  }, []);
+  }, [resumeId, navigate]);
 
   const handleDownload = async () => {
     setIsDownloading(true);
