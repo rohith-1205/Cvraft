@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import useResumeStore from '../store/resumeStore';
+import { usePricing, formatPrice } from '../utils/pricing';
 
 const features = [
   {
@@ -9,7 +11,7 @@ const features = [
   {
     icon: '🤖',
     title: 'AI Structures It',
-    desc: 'Claude AI reads your text and extracts every detail professionally.'
+    desc: 'Our AI reads your text and extracts every detail professionally.'
   },
   {
     icon: '📄',
@@ -33,17 +35,18 @@ const features = [
   }
 ];
 
+// Plan metadata only — prices come from the usePricing hook based on detected country
 const plans = [
   {
     name: 'Basic',
-    price: '₹299',
+    key: 'basic',
     color: 'border-gray-200',
     btnColor: 'bg-gray-800 hover:bg-gray-900',
     features: ['1 Resume Download', '3 Templates', 'PDF Export', 'Standard Support']
   },
   {
     name: 'Pro',
-    price: '₹499',
+    key: 'pro',
     color: 'border-blue-500',
     btnColor: 'bg-blue-600 hover:bg-blue-700',
     badge: '⭐ Most Popular',
@@ -51,7 +54,7 @@ const plans = [
   },
   {
     name: 'Bundle',
-    price: '₹799',
+    key: 'bundle',
     color: 'border-purple-400',
     btnColor: 'bg-purple-600 hover:bg-purple-700',
     features: ['3 Resume Downloads', 'All 5 Templates', 'Cover Letter', 'PDF Export', 'Priority Support']
@@ -59,6 +62,9 @@ const plans = [
 ];
 
 const Landing = () => {
+  const { token } = useResumeStore();
+  // Detect user country and get localized pricing config
+  const { pricing, isLoading } = usePricing();
   return (
     <div className="w-full">
 
@@ -68,7 +74,7 @@ const Landing = () => {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-block bg-blue-500 bg-opacity-40 text-blue-100
             px-4 py-1.5 rounded-full text-sm font-medium mb-6">
-            🚀 Powered by Claude AI + LaTeX
+            🚀 Powered by AI + LaTeX
           </div>
           <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
             Just tell us about yourself —<br />
@@ -79,7 +85,7 @@ const Landing = () => {
             a beautiful, ATS-friendly LaTeX resume PDF in 60 seconds.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register"
+            <Link to={token ? "/build" : "/register"}
               className="bg-yellow-400 text-gray-900 px-8 py-4 rounded-xl
               font-bold text-lg hover:bg-yellow-300 transition shadow-lg">
               Build My Resume → Free Preview
@@ -98,7 +104,7 @@ const Landing = () => {
       </section>
 
       {/* ── HOW IT WORKS ─────────────────────────────── */}
-      <section className="py-20 px-6 bg-white">
+      <section className="py-20 px-6 bg-transparent">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             How It Works
@@ -107,11 +113,11 @@ const Landing = () => {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { step: '01', title: 'Paste Your Details', desc: 'Type or paste anything — education, experience, skills in plain English.' },
-              { step: '02', title: 'AI Does The Work', desc: 'Claude AI structures your content professionally and beautifully.' },
+              { step: '02', title: 'AI Does The Work', desc: 'Our AI structures your content professionally and beautifully.' },
               { step: '03', title: 'Download Your PDF', desc: 'Pay once and download your stunning LaTeX-quality resume instantly.' }
             ].map((item) => (
-              <div key={item.step} className="flex flex-col items-center">
-                <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex
+              <div key={item.step} className="bg-pink-light border border-pink-200 rounded-2xl p-8 flex flex-col items-center text-center shadow-md hover:scale-[1.02] transition duration-300">
+                <div className="w-14 h-14 bg-pink-600 text-white rounded-2xl flex
                   items-center justify-center text-xl font-bold mb-4 shadow-md">
                   {item.step}
                 </div>
@@ -124,13 +130,13 @@ const Landing = () => {
       </section>
 
       {/* ── FEATURES ─────────────────────────────────── */}
-      <section className="py-20 px-6 bg-gray-50">
+      <section className="py-20 px-6 bg-transparent">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-4">
             Why Students Love Cvraft
           </h2>
           <p className="text-gray-500 text-center mb-14">
-            Built specifically for Indian students and early professionals
+            Built specifically for students and early professionals
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             {features.map((f) => (
@@ -147,7 +153,7 @@ const Landing = () => {
       </section>
 
       {/* ── PRICING ──────────────────────────────────── */}
-      <section className="py-20 px-6 bg-white">
+      <section className="py-20 px-6 bg-transparent">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-4">
             Simple, One-Time Pricing
@@ -156,38 +162,54 @@ const Landing = () => {
             No subscriptions. No hidden fees. Pay once, yours forever.
           </p>
           <div className="grid md:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <div key={plan.name}
-                className={`rounded-2xl border-2 ${plan.color} p-8 relative
-                hover:shadow-lg transition`}>
-                {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2
-                    bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium">
-                    {plan.badge}
+            {plans.map((plan) => {
+              // Resolve localized display price for this plan
+              const planPricing = pricing.plans[plan.key];
+              const displayPrice = isLoading
+                ? null
+                : formatPrice(planPricing.displayAmount, pricing.currency, pricing.locale);
+
+              return (
+                <div key={plan.name}
+                  className={`bg-white rounded-2xl border-2 ${plan.color} p-8 relative
+                  hover:shadow-lg transition`}>
+                  {plan.badge && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2
+                      bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium">
+                      {plan.badge}
+                    </div>
+                  )}
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">{plan.name}</h3>
+                  <div className="text-4xl font-extrabold text-gray-900 mb-1">
+                    {/* Localized price with loading skeleton */}
+                    {isLoading ? (
+                      <span className="inline-block w-20 h-9 bg-gray-200 rounded animate-pulse" />
+                    ) : (
+                      displayPrice
+                    )}
                   </div>
-                )}
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{plan.name}</h3>
-                <div className="text-4xl font-extrabold text-gray-900 mb-6">
-                  {plan.price}
-                  <span className="text-sm font-normal text-gray-400 ml-1">
-                    one-time
-                  </span>
+                  <p className="text-gray-400 text-sm mb-6">one-time payment</p>
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="text-green-500 font-bold">✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link to={token ? "/build" : "/register"}
+                    className={`block text-center ${plan.btnColor} text-white
+                    py-3 rounded-xl font-semibold transition`}>
+                    Get Started
+                  </Link>
                 </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="text-green-500 font-bold">✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link to="/register"
-                  className={`block text-center ${plan.btnColor} text-white
-                  py-3 rounded-xl font-semibold transition`}>
-                  Get Started
-                </Link>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {/* International pricing note */}
+          <p className="text-center text-xs text-gray-400 mt-6">
+            🌍 Prices shown in your local currency. Secure international payments supported.
+            Final charged amount may vary slightly based on exchange rates.
+          </p>
         </div>
       </section>
 
@@ -201,7 +223,7 @@ const Landing = () => {
           <p className="text-blue-100 mb-8 text-lg">
             Join thousands of students who landed their dream jobs with Cvraft.
           </p>
-          <Link to="/register"
+          <Link to={token ? "/build" : "/register"}
             className="bg-yellow-400 text-gray-900 px-10 py-4 rounded-xl
             font-bold text-lg hover:bg-yellow-300 transition shadow-lg">
             Start For Free →

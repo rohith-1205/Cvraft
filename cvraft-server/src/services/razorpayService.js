@@ -1,5 +1,3 @@
-require('dotenv').config();
-console.log('Razorpay Key loaded:', !!process.env.RAZORPAY_KEY_ID);
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 
@@ -9,9 +7,9 @@ const getRazorpay = () => new Razorpay({
 });
 
 const PLANS = {
-  basic:  { amount: 29900, label: 'Basic'  },
-  pro:    { amount: 49900, label: 'Pro'    },
-  bundle: { amount: 79900, label: 'Bundle' }
+  basic:  { amount: 14900, label: 'Basic'  },
+  pro:    { amount: 24900, label: 'Pro'    },
+  bundle: { amount: 34900, label: 'Bundle' }
 };
 
 const createOrder = async (plan = 'pro', resumeId) => {
@@ -39,21 +37,4 @@ const verifySignature = (orderId, paymentId, signature) => {
   return expectedSignature === signature;
 };
 
-// Simple test function to isolate order creation issue
-const testCreateOrder = async () => {
-  try {
-    const razorpay = getRazorpay();
-    const order = await razorpay.orders.create({
-      amount: 100, // 1 INR (100 paise)
-      currency: 'INR',
-      receipt: `test_${Date.now()}`
-    });
-    console.log('✅ Test Razorpay Order created successfully:', order.id);
-    return order;
-  } catch (err) {
-    console.error('❌ Test Razorpay Order failed:', err);
-    throw err;
-  }
-};
-
-module.exports = { createOrder, verifySignature, testCreateOrder, PLANS };
+module.exports = { createOrder, verifySignature, PLANS };

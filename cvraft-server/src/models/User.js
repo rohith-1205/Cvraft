@@ -18,7 +18,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Password is required'],
     minlength: 6
-  }
+  },
+  allowedResumesCount: {
+    type: Number,
+    default: 0
+  },
+  allowedCoverLettersCount: {
+    type: Number,
+    default: 0
+  },
+  unlockedResumeIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Resume'
+  }]
 }, { timestamps: true });
 
 // Auto hash password before saving

@@ -1,49 +1,70 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import useResumeStore from '../store/resumeStore';
 
 const templates = [
-  { id: 'T001', name: 'Classic', desc: 'Clean ATS-friendly single column', icon: '📄' },
-  { id: 'T002', name: 'Modern',  desc: 'Two column with colored header',   icon: '🎨' },
-  { id: 'T003', name: 'Minimal', desc: 'Ultra clean with whitespace',       icon: '✨' },
-  { id: 'T004', name: 'ATS Pro', desc: 'Maximum ATS compatibility',         icon: '🎯' },
-  { id: 'T005', name: 'Academic', desc: 'Research and publication focused', icon: '🎓' },
+  { id: 'T001', name: 'Classic',  desc: 'Clean ATS-friendly',       icon: '📄' },
+  { id: 'T002', name: 'Modern',   desc: 'Bold colored header',       icon: '🎨' },
+  { id: 'T003', name: 'Minimal',  desc: 'Ultra clean whitespace',    icon: '✨' },
+  { id: 'T004', name: 'ATS Pro',  desc: 'Maximum ATS compatibility', icon: '🎯' },
+  { id: 'T005', name: 'Academic', desc: 'Research focused',          icon: '🎓' },
 ];
 
-const PLACEHOLDER = `Example — just paste naturally like this:
+const PLACEHOLDER = `Example — paste naturally:
 
-My name is Priya Sharma. I studied B.E Computer Science at PSG Tech Coimbatore, graduating in 2024 with 8.7 CGPA.
+My name is Arjun Mehta. I studied B.E Computer Science at VIT Vellore, graduating 2025 with 8.9 CGPA.
+I did internship at Zoho for 3 months working on Django REST APIs and MySQL.
+Built a project called ShopEasy using React, Node.js and MongoDB.
+Skills: Python, JavaScript, React, Node.js, Git, Docker.
+Won Smart India Hackathon 2024. Contact: arjun@gmail.com | linkedin.com/in/arjun`;
 
-I did a 3-month internship at TCS Chennai where I worked on React dashboards and REST APIs using Node.js and MongoDB. I also built a project called MediTrack — a hospital appointment system using React, Firebase and Tailwind CSS that helped 200+ patients book appointments online.
-
-My skills include JavaScript, Python, React, Node.js, MongoDB, Git and Docker. I won 2nd place at Smart India Hackathon 2023 and have solved 400+ problems on LeetCode.
-
-Contact: priya@gmail.com | linkedin.com/in/priya | github.com/priya`;
+const FONT_FAMILIES = {
+  F001: 'Lora, Georgia, "Times New Roman", serif',
+  F002: 'Helvetica, Arial, sans-serif',
+  F003: '"EB Garamond", Garamond, Georgia, serif',
+  F004: 'Roboto, "Segoe UI", sans-serif',
+  F005: 'Inconsolata, "Fira Code", Monaco, monospace'
+};
 
 const Builder = () => {
   const navigate = useNavigate();
-  const { token, setCurrentResumeId, selectedTemplate, setSelectedTemplate } = useResumeStore();
+  const { 
+    token, 
+    selectedTemplate, 
+    setSelectedTemplate,
+    rawText: storeRawText,
+    setRawText: setStoreRawText
+  } = useResumeStore();
 
-  const [rawText, setRawText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [charCount, setCharCount] = useState(0);
+  const [rawText,          setRawText]          = useState(storeRawText || '');
+  const [selectedFont,     setSelectedFont]     = useState('F001');
+  const [selectedColor,    setSelectedColor]    = useState('C001');
+  const [fonts,            setFonts]            = useState([]);
+  const [colors,           setColors]           = useState([]);
+  const [isLoading,        setIsLoading]        = useState(false);
+  const [error,            setError]            = useState('');
+  const [charCount,        setCharCount]        = useState((storeRawText || '').length);
+
+  // Fetch font and color options from backend
+  useEffect(() => {
+    api.get('/api/resume/options')
+      .then(res => {
+        setFonts(res.data.fonts);
+        setColors(res.data.colors);
+      })
+      .catch(err => console.error('Options fetch error:', err));
+  }, []);
 
   const handleTextChange = (e) => {
     setRawText(e.target.value);
+    setStoreRawText(e.target.value);
     setCharCount(e.target.value.length);
     setError('');
   };
 
   const handleGenerate = async () => {
-    // Check login
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
-    // Validate input
+    if (!token) { navigate('/login'); return; }
     if (rawText.trim().length < 50) {
       setError('Please provide more details — at least 50 characters.');
       return;
@@ -53,33 +74,24 @@ const Builder = () => {
     setError('');
 
     try {
-      const response = await api.post(
-        '/api/resume/generate',
-        { rawText, templateId: selectedTemplate },
-        { responseType: 'blob' }
-      );
+      const response = await api.post('/api/resume/generate', {
+        rawText,
+        templateId: selectedTemplate,
+        fontId:     selectedFont,
+        colorId:    selectedColor
+      });
 
-      // Get resume ID from response headers
-      const resumeId = response.headers['x-resume-id'];
-      setCurrentResumeId(resumeId);
-
-      // Create blob URL for preview
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const blobUrl = URL.createObjectURL(blob);
-
-      // Navigate to preview
-      navigate(`/preview/${resumeId}`, { state: { pdfUrl: blobUrl } });
-
+      navigate(`/preview/${response.data.resumeId}`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      setError(err.response?.data?.message || 'Something went wrong.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-6">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-transparent py-10 px-6">
+      <div className="max-w-6xl mx-auto">
 
         {/* Header */}
         <div className="text-center mb-10">
@@ -87,7 +99,7 @@ const Builder = () => {
             Build Your Resume
           </h1>
           <p className="text-gray-500 text-lg">
-            Paste your details in plain English — our AI does the rest
+            Paste your details — pick your style — generate!
           </p>
         </div>
 
@@ -95,7 +107,8 @@ const Builder = () => {
 
           {/* Left — Text Input */}
           <div className="md:col-span-2 space-y-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white rounded-2xl shadow-sm border
+              border-gray-100 p-6">
               <div className="flex justify-between items-center mb-3">
                 <label className="font-semibold text-gray-900">
                   📝 Your Details
@@ -112,13 +125,13 @@ const Builder = () => {
                 onChange={handleTextChange}
                 placeholder={PLACEHOLDER}
                 rows={16}
-                className="w-full border border-gray-200 rounded-xl p-4 text-sm
-                text-gray-700 resize-none focus:outline-none focus:ring-2
-                focus:ring-blue-400 focus:border-transparent leading-relaxed"
+                className="w-full border border-gray-200 rounded-xl p-4
+                text-sm text-gray-700 resize-none focus:outline-none
+                focus:ring-2 focus:ring-blue-400 leading-relaxed"
               />
               {error && (
-                <div className="mt-3 bg-red-50 border border-red-200 text-red-600
-                  text-sm rounded-lg px-4 py-3">
+                <div className="mt-3 bg-red-50 border border-red-200
+                  text-red-600 text-sm rounded-lg px-4 py-3">
                   ⚠️ {error}
                 </div>
               )}
@@ -130,45 +143,45 @@ const Builder = () => {
                 💡 Tips for best results:
               </p>
               <ul className="text-blue-700 text-sm space-y-1">
-                <li>• Include your name, email, phone, LinkedIn and GitHub</li>
-                <li>• Mention college name, degree, year and CGPA</li>
-                <li>• Describe internships with company name and work done</li>
+                <li>• Include name, email, phone, LinkedIn and GitHub</li>
+                <li>• Mention college, degree, year and CGPA</li>
+                <li>• Describe internships with company and work done</li>
                 <li>• List projects with tech stack used</li>
-                <li>• Add any achievements or certifications</li>
+                <li>• Add achievements or certifications</li>
               </ul>
             </div>
           </div>
 
-          {/* Right — Template + Generate */}
-          <div className="space-y-6">
+          {/* Right — Style Options */}
+          <div className="space-y-5">
 
             {/* Template Picker */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                🎨 Choose Template
+            <div className="bg-white rounded-2xl shadow-sm border
+              border-gray-100 p-5">
+              <h3 className="font-semibold text-gray-900 mb-3">
+                📄 Template
               </h3>
               <div className="space-y-2">
                 {templates.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => setSelectedTemplate(t.id)}
-                    className={`w-full text-left px-4 py-3 rounded-xl border-2
-                    transition ${selectedTemplate === t.id
+                    className={`w-full text-left px-3 py-2.5 rounded-xl
+                    border-2 transition ${selectedTemplate === t.id
                       ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-100 hover:border-gray-200 bg-white'}`}>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{t.icon}</span>
+                      : 'border-gray-100 hover:border-gray-200'}`}>
+                    <div className="flex items-center gap-2">
+                      <span>{t.icon}</span>
                       <div>
-                        <div className={`font-semibold text-sm
+                        <div className={`font-semibold text-xs
                           ${selectedTemplate === t.id
-                            ? 'text-blue-700'
-                            : 'text-gray-800'}`}>
+                            ? 'text-blue-700' : 'text-gray-800'}`}>
                           {t.name}
                         </div>
                         <div className="text-xs text-gray-400">{t.desc}</div>
                       </div>
                       {selectedTemplate === t.id && (
-                        <span className="ml-auto text-blue-500 font-bold">✓</span>
+                        <span className="ml-auto text-blue-500 text-xs font-bold">✓</span>
                       )}
                     </div>
                   </button>
@@ -176,17 +189,93 @@ const Builder = () => {
               </div>
             </div>
 
+            {/* Font Picker */}
+            <div className="bg-white rounded-2xl shadow-sm border
+              border-gray-100 p-5">
+              <h3 className="font-semibold text-gray-900 mb-3">
+                🔤 Font Style
+              </h3>
+              <div className="space-y-2">
+                {fonts.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setSelectedFont(f.id)}
+                    className={`w-full text-left px-4 py-3 rounded-xl
+                    border-2 transition ${selectedFont === f.id
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-100 hover:border-gray-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className={`text-base font-semibold transition-colors
+                          ${selectedFont === f.id
+                            ? 'text-purple-800' : 'text-gray-800'}`}
+                          style={{ fontFamily: FONT_FAMILIES[f.id] || 'inherit' }}>
+                          {f.name}
+                        </span>
+                        <span className="text-xs text-gray-400 mt-0.5"
+                          style={{ fontFamily: FONT_FAMILIES[f.id] || 'inherit' }}>
+                          John Doe — Software Engineer
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl font-medium text-gray-500 select-none bg-gray-50 px-2 py-0.5 rounded border border-gray-100"
+                          style={{ fontFamily: FONT_FAMILIES[f.id] || 'inherit' }}>
+                          Aa
+                        </span>
+                        {selectedFont === f.id && (
+                          <span className="text-purple-600 text-sm font-bold">✓</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Color Picker */}
+            <div className="bg-white rounded-2xl shadow-sm border
+              border-gray-100 p-5">
+              <h3 className="font-semibold text-gray-900 mb-3">
+                🎨 Color Theme
+              </h3>
+              <div className="grid grid-cols-3 gap-2">
+                {colors.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedColor(c.id)}
+                    title={c.name}
+                    className={`relative h-10 rounded-xl border-2 transition
+                    ${selectedColor === c.id
+                      ? 'border-gray-900 scale-105 shadow-md'
+                      : 'border-transparent hover:border-gray-300'}`}
+                    style={{ backgroundColor: `#${c.hex}` }}>
+                    {selectedColor === c.id && (
+                      <span className="absolute inset-0 flex items-center
+                        justify-center text-white font-bold text-sm">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {/* Selected color name */}
+              <p className="text-xs text-gray-400 mt-2 text-center">
+                {colors.find(c => c.id === selectedColor)?.name || ''}
+              </p>
+            </div>
+
             {/* Generate Button */}
             <button
               onClick={handleGenerate}
               disabled={isLoading}
-              className={`w-full py-4 rounded-xl font-bold text-lg transition
-              shadow-lg ${isLoading
+              className={`w-full py-4 rounded-xl font-bold text-lg
+              transition shadow-lg ${isLoading
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
               {isLoading ? (
                 <span className="flex items-center justify-center gap-3">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"
+                    fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10"
                       stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor"
@@ -198,13 +287,13 @@ const Builder = () => {
             </button>
 
             {/* Price note */}
-            <div className="bg-green-50 border border-green-100 rounded-xl p-4
-              text-center">
+            <div className="bg-green-50 border border-green-100 rounded-xl
+              p-4 text-center">
               <p className="text-green-800 text-sm font-medium">
                 🆓 Preview is free!
               </p>
               <p className="text-green-600 text-xs mt-1">
-                Pay only ₹499 to download the clean PDF
+                Pay only ₹149 onwards to download
               </p>
             </div>
 

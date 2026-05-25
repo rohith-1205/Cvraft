@@ -1,5 +1,4 @@
 require('dotenv').config();
-console.log('Razorpay Key loaded:', !!process.env.RAZORPAY_KEY_ID);
 const dns = require('dns');
 
 // Configure Node.js to use Google and Cloudflare DNS servers
@@ -14,16 +13,34 @@ try {
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
 
 // Middleware
 app.use(express.json());
+
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:5173',
+  process.env.ADMIN_URL || 'http://localhost:5174',
+  'http://localhost:5173',
+  'http://localhost:5174'
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
+
+// Security headers
+app.use(helmet());
 
 // Rate limiter
 const limiter = rateLimit({
@@ -41,6 +58,10 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
+// Admin Routes
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
+
 // Resume Routes
 const resumeRoutes = require('./routes/resume');
 app.use('/api/resume', resumeRoutes);
@@ -51,11 +72,11 @@ app.use('/api/payment', paymentRoutes);
 
 // MongoDB Connection with Retry Logic
 const connectDB = async () => {
-  const fallbackUri = 'mongodb+srv://cvraft_admin:9KJoIjjbaPEMsYKN@cvraft.3rjf1zw.mongodb.net/cvraft?retryWrites=true&w=majority&appName=Cvraft';
-  const uri = process.env.MONGODB_URI || fallbackUri;
-  
-  if (!process.env.MONGODB_URI) {
-    console.warn('⚠️ process.env.MONGODB_URI is not defined in environment variables. Using direct connection string fallback.');
+  // Fail loudly if MONGODB_URI is not set — never use hardcoded credentials
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error('🚨 MONGODB_URI environment variable is not set. Aborting.');
+    process.exit(1);
   }
 
   const options = {
@@ -93,5 +114,19 @@ connectDB();
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} ✅`);
+});
+
+// Global Express error handler — prevents stack traces leaking to clients
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.message);
+  res.status(err.status || 500).json({
+    success: false,
+    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
+  });
+});
+
+// Safety net for unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 

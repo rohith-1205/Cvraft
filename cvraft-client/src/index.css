@@ -1,3 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inconsolata:wght@200..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Global Background (Vibrant Blue/Indigo) ───────────────────────── */
+html, body {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #3730a3 100%) !important;
+  background-attachment: fixed !important;
+  min-height: 100vh;
+}
+
+/* Frosted Glass Navbar */
+nav.bg-white\/80 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Card overrides (Solid white cards popping off the blue background) */
+.bg-white {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-color: rgba(37, 99, 235, 0.15) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Border overrides */
+.border-gray-100, .border-gray-200 {
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+
+/* ── Text Color Scoping Rules ──────────────────────────────────────── */
+
+/* A. TEXT OUTSIDE CARDS (Directly on the blue background — Must be light/white) */
+.text-gray-900, .text-gray-800, .text-gray-700 {
+  color: #ffffff !important;
+}
+
+.text-gray-500, .text-gray-400 {
+  color: #e0f2fe !important; /* sky-100 */
+}
+
+.text-blue-800, .text-blue-700, .text-blue-600 {
+  color: #ffffff !important;
+}
+
+.text-green-800, .text-green-600 {
+  color: #4ade80 !important; /* light glowing green */
+}
+
+/* B. TEXT INSIDE CARDS & NAVBAR (Against white background — Must be dark/slate) */
+.bg-white .text-gray-900, .bg-white .text-gray-800, .bg-white .text-gray-700,
+nav .text-gray-900, nav .text-gray-800, nav .text-gray-700 {
+  color: #0f172a !important; /* deep dark slate */
+}
+
+.bg-white .text-gray-500, .bg-white .text-gray-400,
+nav .text-gray-500, nav .text-gray-400 {
+  color: #475569 !important; /* medium slate */
+}
+
+.bg-white .text-blue-800, .bg-white .text-blue-700, .bg-white .text-blue-600,
+nav .text-blue-800, nav .text-blue-700, nav .text-blue-600 {
+  color: #2563eb !important; /* standard vibrant blue */
+}
+
+.bg-white .text-green-800, .bg-white .text-green-600 {
+  color: #16a34a !important; /* standard dark green */
+}
+
+/* ── Info Blocks & Notification Banners Scoping ────────────────────── */
+
+/* A. OUTSIDE CARDS (Semi-translucent frosted glowing banners) */
+.bg-blue-50 {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.bg-green-50 {
+  background-color: rgba(74, 222, 128, 0.15) !important;
+  color: #86efac !important;
+  border: 1px solid rgba(74, 222, 128, 0.3) !important;
+}
+
+.bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+}
+
+/* B. INSIDE CARDS (Standard high-contrast light colors) */
+.bg-white .bg-blue-50 {
+  background-color: #eff6ff !important;
+  color: #1e40af !important;
+  border: 1px solid #dbeafe !important;
+}
+
+.bg-white .bg-green-50 {
+  background-color: #f0fdf4 !important;
+  color: #166534 !important;
+  border: 1px solid #dcfce7 !important;
+}
+
+.bg-white .bg-red-50 {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border: 1px solid #fee2e2 !important;
+}
+
+/* ── Input Fields ──────────────────────────────────────────────────── */
+input, textarea, select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+input:focus, textarea:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Hover styles inside cards */
+.bg-white .hover\:bg-gray-50:hover {
+  background-color: #f8fafc !important;
+}
+
+.bg-white .hover\:border-gray-200:hover {
+  border-color: #cbd5e1 !important;
+}
+
+.bg-gray-50 {
+  background-color: #f8fafc !important;
+}
+
+/* Scoped text-gray-600 inside cards & navbar */
+.bg-white .text-gray-600, nav .text-gray-600 {
+  color: #334155 !important; /* slate-700 */
+}
+
+/* Active/Selected Borders inside Cards */
+.bg-white .border-blue-500, .bg-white .border-blue-600 {
+  border-color: #2563eb !important;
+}
+.bg-white .border-purple-500, .bg-white .border-purple-600 {
+  border-color: #9333ea !important;
+}
+.bg-white .border-indigo-500, .bg-white .border-indigo-600 {
+  border-color: #4f46e5 !important;
+}
+
+/* Whitish Pink Light Cards Styling */
+.bg-pink-light {
+  background-color: #fff1f2 !important; /* whitish rose/pink */
+  border-color: #fecdd3 !important; /* light rose/pink border */
+}
+
+.bg-pink-light .text-gray-900, .bg-pink-light .text-gray-800, .bg-pink-light .text-gray-700 {
+  color: #0f172a !important; /* dark slate */
+}
+
+.bg-pink-light .text-gray-600 {
+  color: #334155 !important;
+}
+
+.bg-pink-light .text-gray-500, .bg-pink-light .text-gray-400 {
+  color: #475569 !important;
+}

@@ -7,24 +7,40 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Success from './pages/Success';
+import NotFound from './pages/NotFound';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-transparent flex flex-col">
         <Navbar />
         <main className="flex-1">
           <Routes>
-            <Route path="/"           element={<Landing />} />
-            <Route path="/build"      element={<Builder />} />
-            <Route path="/preview/:id" element={<Preview />} />
-            <Route path="/login"      element={<Login />} />
-            <Route path="/register"   element={<Register />} />
-            <Route path="/dashboard"  element={<Dashboard />} />
-            <Route path="/pricing"    element={<Pricing />} />
-            <Route path="/success"    element={<Success />} />
+            {/* Public Routes */}
+            <Route path="/"        element={<Landing />} />
+            <Route path="/login"   element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/pricing" element={<Pricing />} />
+
+            {/* Protected Routes */}
+            <Route path="/build" element={
+              <ProtectedRoute><Builder /></ProtectedRoute>
+            }/>
+            <Route path="/preview/:id" element={
+              <ProtectedRoute><Preview /></ProtectedRoute>
+            }/>
+            <Route path="/dashboard" element={
+              <ProtectedRoute><Dashboard /></ProtectedRoute>
+            }/>
+            <Route path="/success" element={
+              <ProtectedRoute><Success /></ProtectedRoute>
+            }/>
+
+            {/* 404 Route */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
         <Footer />

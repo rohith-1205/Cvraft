@@ -8,6 +8,7 @@ const useResumeStore = create((set) => ({
   // Resume
   rawText: '',
   selectedTemplate: 'T001',
+  selectedColor: 'blue',
   currentResumeId: null,
   structuredData: null,
   pdfBlob: null,
@@ -28,6 +29,7 @@ const useResumeStore = create((set) => ({
   },
   setRawText: (text) => set({ rawText: text }),
   setSelectedTemplate: (id) => set({ selectedTemplate: id }),
+  setSelectedColor: (color) => set({ selectedColor: color }),
   setCurrentResumeId: (id) => set({ currentResumeId: id }),
   setStructuredData: (data) => set({ structuredData: data }),
   setPdfBlob: (blob) => set({ pdfBlob: blob }),

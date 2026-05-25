@@ -25,8 +25,9 @@ const Footer = () => {
           </div>
 
         </div>
-        <div className="border-t border-gray-800 mt-6 pt-6 text-center text-sm">
-          © 2026 Cvraft. All rights reserved. Built with ❤️ in India.
+        <div className="border-t border-gray-800 mt-6 pt-6 text-center text-sm flex flex-col sm:flex-row justify-between items-center gap-2 text-gray-500">
+          <span>© 2026 Cvraft. All rights reserved.</span>
+          <span>For queries contact <a href="mailto:synchabit@gmail.com" className="text-blue-400 hover:underline">synchabit@gmail.com</a></span>
         </div>
       </div>
     </footer>

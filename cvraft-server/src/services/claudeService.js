@@ -90,4 +90,42 @@ Return this EXACT JSON structure:
   return structured;
 };
 
-module.exports = { structureResumeData };
+const generateCoverLetterText = async (resumeData) => {
+  const systemPrompt = `You are a professional career coach and copywriter.
+Your task is to write a highly professional, compelling, and customized Cover Letter based on a candidate's structured resume data.
+
+The cover letter should:
+- Be addressed to a generic "Hiring Manager".
+- Have a professional, engaging opening statement specifying the applicant's name and intent to apply for professional opportunities.
+- Highlight the key experiences, skills, and projects found in their resume in a narrative, persuasive format.
+- Have a strong concluding paragraph indicating their enthusiasm and requesting an interview.
+- Do NOT include headers (date, sender address, receiver address, or signature lines) in the body itself, because those will be handled by the LaTeX template layout.
+- Write ONLY the letter body paragraphs. Do not add salutation "Dear Hiring Manager," or closing "Sincerely," as those are hardcoded in the LaTeX template.
+- Return the plain text response with no markdown, no headings, and no code blocks. Just 3 body paragraphs separated by double newlines.`;
+
+  const response = await axios.post(
+    'https://api.anthropic.com/v1/messages',
+    {
+      model: 'claude-haiku-4-5',
+      max_tokens: 1500,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: `Write a cover letter based on this resume data:\n\n${JSON.stringify(resumeData, null, 2)}`
+        }
+      ]
+    },
+    {
+      headers: {
+        'x-api-key': process.env.CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      }
+    }
+  );
+
+  return response.data.content[0].text.trim();
+};
+
+module.exports = { structureResumeData, generateCoverLetterText };
