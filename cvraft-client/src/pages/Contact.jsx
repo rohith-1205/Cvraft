@@ -1,7 +1,42 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Contact = () => {
   const navigate = useNavigate();
+  const [result, setResult] = useState("");
+  const [status, setStatus] = useState("idle"); // idle, loading, success, error
+
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    setStatus("loading");
+    setResult("Sending...");
+    
+    const formData = new FormData(event.target);
+    formData.append("access_key", import.meta.env.VITE_WEB3FORMS_ACCESS_KEY);
+
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setStatus("success");
+        setResult("Form Submitted Successfully");
+        event.target.reset();
+      } else {
+        console.log("Error", data);
+        setStatus("error");
+        setResult(data.message);
+      }
+    } catch (error) {
+      console.log("Error", error);
+      setStatus("error");
+      setResult("Something went wrong. Please try again later.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -43,23 +78,75 @@ const Contact = () => {
           </div>
 
           <div className="bg-gray-50 p-8 rounded-2xl border border-gray-100">
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" placeholder="Your name" />
+            {status === "success" ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                  ✓
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Message Sent!</h3>
+                <p className="text-gray-600 mb-6">Thank you for reaching out. We'll get back to you soon.</p>
+                <button 
+                  onClick={() => setStatus("idle")}
+                  className="text-blue-600 font-semibold hover:underline"
+                >
+                  Send another message
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" placeholder="your@email.com" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                <textarea className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition h-32" placeholder="How can we help?"></textarea>
-              </div>
-              <button type="submit" className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition">
-                Send Message
-              </button>
-            </form>
+            ) : (
+              <form onSubmit={onSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input 
+                    type="text" 
+                    name="name"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" 
+                    placeholder="Your name" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input 
+                    type="email" 
+                    name="email"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" 
+                    placeholder="your@email.com" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                  <textarea 
+                    name="message"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition h-32" 
+                    placeholder="How can we help?"
+                  ></textarea>
+                </div>
+                
+                {status === "error" && (
+                  <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                    {result}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  disabled={status === "loading"}
+                  className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {status === "loading" ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Sending...
+                    </>
+                  ) : "Send Message"}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>
