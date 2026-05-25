@@ -17,6 +17,7 @@ const Preview = () => {
   const [hasCoverLetter, setHasCoverLetter] = useState(false);
   const [coverLetterText, setCoverLetterText] = useState('');
   const [isCoverLetterLoading, setIsCoverLetterLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('pro');
 
   // Detect country and get localized pricing — Razorpay still charges INR internally
   const { pricing, isLoading: isPricingLoading } = usePricing();
@@ -262,7 +263,7 @@ const Preview = () => {
                 <div className="relative">
                   <iframe
                     src={`${pdfUrl}#toolbar=0`}
-                    className="w-full h-[700px]"
+                    className="w-full h-[580px]"
                     title="Resume Preview"
                   />
                   {/* Watermark overlay */}
@@ -338,37 +339,56 @@ const Preview = () => {
                   )}
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div className="text-center">
-                    <p className="text-gray-400 text-sm mb-2">Unlock your resume</p>
-                    <div className="text-3xl font-extrabold text-gray-900">
-                      {isPricingLoading ? '...' : formatPrice(pricing.plans.pro.displayAmount, pricing.currency, pricing.locale)}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">one-time payment</p>
+                    <p className="text-gray-500 text-sm font-semibold">Select a Plan</p>
                   </div>
 
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => handlePayment('pro')}
-                      disabled={isPayLoading}
-                      className="w-full bg-blue-600 text-white py-4 rounded-xl
-                      font-bold text-lg hover:bg-blue-700 transition shadow-lg
-                      disabled:opacity-50">
-                      {isPayLoading ? 'Processing...' : 'Unlock Now'}
-                    </button>
-                    
-                    {/* Bundle Option */}
-                    <button
-                      onClick={() => handlePayment('bundle')}
-                      disabled={isPayLoading}
-                      className="w-full bg-purple-600 text-white py-3 rounded-xl
-                      font-semibold hover:bg-purple-700 transition text-sm
-                      disabled:opacity-50">
-                      Get Bundle (3 Resumes + CL)
-                    </button>
+                  <div className="space-y-2.5">
+                    {['basic', 'pro', 'bundle'].map((planKey) => {
+                      const planMeta = {
+                        basic: { name: 'Basic', desc: '1 Resume Download' },
+                        pro: { name: 'Pro (Popular)', desc: '1 Resume + ATS check' },
+                        bundle: { name: 'Bundle', desc: '3 Resumes + Cover Letter' }
+                      }[planKey];
+                      
+                      const planPricing = pricing.plans[planKey];
+                      const displayPrice = isPricingLoading ? '...' : formatPrice(planPricing.displayAmount, pricing.currency, pricing.locale);
+                      const isSelected = selectedPlan === planKey;
+                      
+                      return (
+                        <button
+                          key={planKey}
+                          type="button"
+                          onClick={() => setSelectedPlan(planKey)}
+                          className={`w-full text-left p-3.5 rounded-xl border-2 transition flex items-center justify-between ${
+                            isSelected 
+                              ? 'border-blue-600 bg-blue-50/50 shadow-sm' 
+                              : 'border-gray-100 hover:border-gray-200 bg-white'
+                          }`}
+                        >
+                          <div>
+                            <span className="font-bold text-sm text-gray-800">{planMeta.name}</span>
+                            <p className="text-xs text-gray-400 mt-0.5">{planMeta.desc}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-extrabold text-sm text-gray-800">{displayPrice}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  <ul className="space-y-2">
+                  <button
+                    onClick={() => handlePayment(selectedPlan)}
+                    disabled={isPayLoading}
+                    className="w-full bg-blue-600 text-white py-3.5 rounded-xl
+                    font-bold text-base hover:bg-blue-700 transition shadow-lg
+                    disabled:opacity-50">
+                    {isPayLoading ? 'Processing...' : 'Unlock Now'}
+                  </button>
+
+                  <ul className="space-y-1.5 pt-1">
                     {['Clean PDF Export', 'ATS Optimized', 'Priority Support'].map(f => (
                       <li key={f} className="flex items-center gap-2 text-xs text-gray-500">
                         <span className="text-green-500">✓</span> {f}
@@ -384,6 +404,24 @@ const Preview = () => {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Navigation Shortcuts */}
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate('/build')}
+                className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4
+                font-semibold hover:bg-gray-50 transition text-sm flex items-center justify-center gap-2"
+              >
+                <span className="text-gray-700">← Edit Resume</span>
+              </button>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4
+                font-semibold hover:bg-gray-50 transition text-sm flex items-center justify-center gap-2"
+              >
+                <span className="text-gray-700">📁 My Resumes</span>
+              </button>
             </div>
 
             {/* Help Box */}

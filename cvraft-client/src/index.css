@@ -49,23 +49,27 @@ nav.bg-white\/80 {
   color: #4ade80 !important; /* light glowing green */
 }
 
-/* B. TEXT INSIDE CARDS & NAVBAR (Against white background — Must be dark/slate) */
+/* B. TEXT INSIDE CARDS & NAVBAR (Against white/light background — Must be dark/slate) */
 .bg-white .text-gray-900, .bg-white .text-gray-800, .bg-white .text-gray-700,
+.bg-gray-50 .text-gray-900, .bg-gray-50 .text-gray-800, .bg-gray-50 .text-gray-700,
 nav .text-gray-900, nav .text-gray-800, nav .text-gray-700 {
   color: #0f172a !important; /* deep dark slate */
 }
 
 .bg-white .text-gray-500, .bg-white .text-gray-400,
+.bg-gray-50 .text-gray-500, .bg-gray-50 .text-gray-400,
 nav .text-gray-500, nav .text-gray-400 {
   color: #475569 !important; /* medium slate */
 }
 
 .bg-white .text-blue-800, .bg-white .text-blue-700, .bg-white .text-blue-600,
+.bg-gray-50 .text-blue-800, .bg-gray-50 .text-blue-700, .bg-gray-50 .text-blue-600,
 nav .text-blue-800, nav .text-blue-700, nav .text-blue-600 {
   color: #2563eb !important; /* standard vibrant blue */
 }
 
-.bg-white .text-green-800, .bg-white .text-green-600 {
+.bg-white .text-green-800, .bg-white .text-green-600,
+.bg-gray-50 .text-green-800, .bg-gray-50 .text-green-600 {
   color: #16a34a !important; /* standard dark green */
 }
 
@@ -128,18 +132,22 @@ input::placeholder, textarea::placeholder {
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.15);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.85);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 /* Hover styles inside cards */
@@ -156,7 +164,7 @@ input::placeholder, textarea::placeholder {
 }
 
 /* Scoped text-gray-600 inside cards & navbar */
-.bg-white .text-gray-600, nav .text-gray-600 {
+.bg-white .text-gray-600, .bg-gray-50 .text-gray-600, nav .text-gray-600 {
   color: #334155 !important; /* slate-700 */
 }
 

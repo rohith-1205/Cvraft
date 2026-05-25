@@ -58,6 +58,9 @@ const createPaymentOrder = async (req, res) => {
     });
 
   } catch (err) {
+    console.error('Full Razorpay error:', JSON.stringify(err, null, 2));
+    console.error('Key ID being used:', process.env.RAZORPAY_KEY_ID);
+    console.error('Secret exists:', !!process.env.RAZORPAY_KEY_SECRET);
     console.error('❌ Create order error:', err);
     if (err.response) {
       console.error('Response data:', err.response.data || err.response);

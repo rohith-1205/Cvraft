@@ -25,16 +25,29 @@ const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:5173',
   process.env.ADMIN_URL || 'http://localhost:5174',
   'http://localhost:5173',
-  'http://localhost:5174'
+  'http://localhost:5174',
+  'https://cvraft.vercel.app'
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin) {
+      return callback(null, true);
     }
+
+    // Check if origin is in the allowed static list
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+
+    // Allow Vercel deployments (cvraft.vercel.app and *.vercel.app subdomains)
+    const isVercelOrigin = /^https:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin);
+    if (isVercelOrigin) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
