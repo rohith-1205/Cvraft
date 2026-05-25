@@ -47,7 +47,14 @@ app.use(cors({
       return callback(null, true);
     }
 
-    return callback(new Error('Not allowed by CORS'));
+    // Allow cvraft.com and any of its subdomains (e.g. admin.cvraft.com)
+    const isCvraftOrigin = /^https:\/\/([a-zA-Z0-9-]+\.)*cvraft\.com$/.test(origin);
+    if (isCvraftOrigin) {
+      return callback(null, true);
+    }
+
+    console.error('❌ CORS blocked origin:', origin);
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true
 }));
