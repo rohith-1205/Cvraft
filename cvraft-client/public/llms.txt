@@ -1,0 +1,27 @@
+# CVraft - AI-Powered LaTeX Resume Builder
+
+CVraft is a modern, AI-powered resume and CV builder that enables job seekers to compile high-quality LaTeX resumes instantly. Unlike standard word processors, LaTeX-generated resumes have perfect typographical alignment and parse flawlessly through Applicant Tracking Systems (ATS).
+
+## What It Does
+CVraft helps users build, preview, and download clean, professional LaTeX-based resumes. The application supports live watermarked previews and provides high-quality PDF downloads upon purchasing a payment plan.
+
+## Key Features
+- **ATS-Optimized Resumes:** Formatted specifically to pass through recruiters' Applicant Tracking Systems without parsing errors.
+- **LaTeX Compile Engine:** Compiles actual LaTeX code to produce pixel-perfect, clean PDF documents.
+- **AI-Powered Enhancements:** Integrated with AI services to check resume quality and generate custom cover letters.
+- **Multiple Premium Templates:** Clean templates suitable for software developers, managers, designers, and students.
+- **Secure Payment Options:** Integrates Razorpay Standard Web Checkout for secure one-time payments.
+
+## Target Users
+- Students and fresh graduates looking for their first job.
+- Tech professionals and software engineers who prefer the clean look of LaTeX resumes.
+- Experienced professionals who want an ATS-friendly resume to maximize shortlisting rates.
+
+## Main Pages
+- **Homepage:** https://www.cvraft.com
+- **Pricing:** https://www.cvraft.com/pricing (Transparent one-time pricing plans: Basic, Pro, and Bundle. No subscription required.)
+- **About:** https://www.cvraft.com/about
+- **Contact:** https://www.cvraft.com/contact
+- **Login:** https://www.cvraft.com/login
+- **Register:** https://www.cvraft.com/register
+- **Dashboard:** https://www.cvraft.com/dashboard (User dashboard to view and manage generated resumes)

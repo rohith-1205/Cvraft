@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /dashboard
+Disallow: /editor
+Disallow: /api
+
+Sitemap: https://www.cvraft.com/sitemap.xml
