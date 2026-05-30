@@ -77,7 +77,7 @@ const Landing = () => {
             🚀 Powered by AI + LaTeX
           </div>
           <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
-            Just tell us about yourself —<br />
+            Build Your Professional CV with AI —<br />
             <span className="text-yellow-300">we'll craft the rest.</span>
           </h1>
           <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
