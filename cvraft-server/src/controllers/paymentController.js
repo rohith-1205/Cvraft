@@ -1,7 +1,7 @@
 const Payment = require('../models/Payment');
 const Resume = require('../models/Resume');
 const User = require('../models/User');
-const { createOrder, verifySignature } = require('../services/razorpayService');
+const { createOrder, verifySignature, PLANS } = require('../services/razorpayService');
 const { compileToPDF, buildLatexCode } = require('../services/latexService');
 
 // ── CREATE ORDER ──────────────────────────────────────
@@ -9,6 +9,23 @@ const { compileToPDF, buildLatexCode } = require('../services/latexService');
 const createPaymentOrder = async (req, res) => {
   try {
     const { resumeId, plan } = req.body;
+
+    // Validate plan and amount
+    const selectedPlan = plan || 'pro';
+    const planDetails = PLANS[selectedPlan];
+    if (!planDetails) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid plan selected'
+      });
+    }
+
+    if (planDetails.amount < 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Amount must be at least 100 paise'
+      });
+    }
 
     // Validate resume exists and belongs to user
     const resume = await Resume.findOne({
@@ -32,7 +49,7 @@ const createPaymentOrder = async (req, res) => {
     }
 
     // Create Razorpay order
-    const { order, planDetails } = await createOrder(plan || 'pro', resumeId);
+    const { order } = await createOrder(plan || 'pro', resumeId);
 
     // Save payment record
     const payment = await Payment.create({
@@ -91,6 +108,13 @@ const verifyPayment = async (req, res) => {
       razorpaySignature,
       resumeId
     } = req.body;
+
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !resumeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required payment verification fields'
+      });
+    }
 
     // Verify signature
     const isValid = verifySignature(

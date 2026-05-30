@@ -221,6 +221,10 @@ const Preview = () => {
       };
 
       const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', function (response) {
+        console.error('Payment failed:', response.error);
+        setError(`Payment failed: ${response.error.description}`);
+      });
       razorpay.open();
 
     } catch (err) {
