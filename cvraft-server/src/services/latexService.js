@@ -841,7 +841,7 @@ const buildInvoiceLatex = (payment, user) => {
 \\begin{tabular*}{\\textwidth}{l@{\\extracolsep{\\fill}}r}
   {\\Huge\\bfseries\\color{primary} CVRAFT} & {\\Huge\\bfseries INVOICE} \\\\
   {\\small Beautifully Crafted Resumes} & {\\small Invoice No: \\textbf{${invoiceNumber}}} \\\\
-  {\\small support@cvraft.com} & {\\small Date: \\textbf{${invoiceDate}}}
+  {\\small synchabit@gmail.com} & {\\small Date: \\textbf{${invoiceDate}}}
 \\end{tabular*}
 
 \\vspace{30pt}
@@ -849,8 +849,8 @@ const buildInvoiceLatex = (payment, user) => {
 \\noindent
 \\begin{tabular*}{\\textwidth}{l@{\\extracolsep{\\fill}}r}
   {\\large\\bfseries\\color{primary} Billed To:} & {\\large\\bfseries\\color{primary} Provider Info:} \\\\
-  \\textbf{${customerName}} & CVRAFT Inc. \\\\
-  Email: ${customerEmail} & Email: support@cvraft.com \\\\
+  \\textbf{${customerName}} & CVRAFT \\\\
+  Email: ${customerEmail} & Email: synchabit@gmail.com \\\\
   & Web: cvraft.com
 \\end{tabular*}
 
