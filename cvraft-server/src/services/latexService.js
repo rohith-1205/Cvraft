@@ -813,7 +813,7 @@ Sincerely,
 };
 
 const buildInvoiceLatex = (payment, user) => {
-  const invoiceNumber = payment.razorpayPaymentId || `INV-${payment._id.toString().slice(-6).toUpperCase()}`;
+  const invoiceNumber = escapeLatex(payment.razorpayPaymentId || `INV-${payment._id.toString().slice(-6).toUpperCase()}`);
   const invoiceDate = new Date(payment.createdAt).toLocaleDateString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric'
   });
