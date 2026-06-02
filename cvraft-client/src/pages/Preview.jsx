@@ -1,8 +1,110 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import useResumeStore from '../store/resumeStore';
 import { usePricing, formatPrice } from '../utils/pricing';
+
+const MobilePDFPreview = ({ url, isPdfjsLoaded }) => {
+  const containerRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [width, setWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let renderTasks = [];
+
+    const renderPDF = async () => {
+      if (!isPdfjsLoaded) return;
+      try {
+        setLoading(true);
+        const pdfjsLib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+        if (!pdfjsLib) return;
+
+        const loadingTask = pdfjsLib.getDocument(url);
+        const pdf = await loadingTask.promise;
+        if (!active) return;
+
+        setLoading(false);
+
+        // Clear any existing contents to prepare for clean redraw
+        if (containerRef.current) {
+          containerRef.current.innerHTML = '';
+        }
+
+        // Render each page
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          if (!active) return;
+
+          // Get container width to scale the canvas responsively
+          const containerWidth = containerRef.current?.clientWidth || (window.innerWidth - 48);
+          
+          // Calculate scale based on container width
+          const unscaledViewport = page.getViewport({ scale: 1.0 });
+          const scale = containerWidth / unscaledViewport.width;
+          const viewport = page.getViewport({ scale });
+
+          // Create canvas element
+          const canvas = document.createElement('canvas');
+          canvas.className = "w-full shadow-sm rounded-lg mb-4 bg-white last:mb-0";
+          containerRef.current?.appendChild(canvas);
+
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport,
+          };
+          
+          const renderTask = page.render(renderContext);
+          renderTasks.push(renderTask);
+          await renderTask.promise;
+        }
+      } catch (err) {
+        console.error('Error rendering PDF:', err);
+      }
+    };
+
+    renderPDF();
+
+    return () => {
+      active = false;
+      renderTasks.forEach(task => {
+        try {
+          task.cancel();
+        } catch {
+          // Task might already be completed/cancelled
+        }
+      });
+    };
+  }, [url, isPdfjsLoaded, width]);
+
+  if (!isPdfjsLoaded || loading) {
+    return (
+      <div className="w-full h-[580px] flex items-center justify-center bg-gray-50 text-gray-400 rounded-b-2xl">
+        <div className="text-center">
+          <div className="animate-spin text-3xl mb-3">⏳</div>
+          <p className="text-sm">Loading preview...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full flex flex-col items-center p-3 bg-gray-100 max-h-[580px] overflow-y-auto rounded-b-2xl"
+    />
+  );
+};
 
 const Preview = () => {
   const { id } = useParams();
@@ -12,6 +114,10 @@ const Preview = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPayLoading, setIsPayLoading] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isPdfjsLoaded, setIsPdfjsLoaded] = useState(() => {
+    return !!(window.pdfjsLib || window['pdfjs-dist/build/pdf']);
+  });
   const [error, setError] = useState('');
   const [remainingDownloads, setRemainingDownloads] = useState(0);
   const [hasCoverLetter, setHasCoverLetter] = useState(false);
@@ -21,6 +127,53 @@ const Preview = () => {
 
   // Detect country and get localized pricing — Razorpay still charges INR internally
   const { pricing, isLoading: isPricingLoading } = usePricing();
+
+  // Detect mobile and load pdf.js script dynamically
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+    };
+    checkMobile();
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    let script = document.getElementById('pdfjs-script');
+    if (script) {
+      const isLoaded = !!(window.pdfjsLib || window['pdfjs-dist/build/pdf']);
+      if (isLoaded) {
+        setTimeout(() => {
+          setIsPdfjsLoaded(true);
+        }, 0);
+      } else {
+        const handleLoad = () => {
+          const pdfjsLib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+          if (pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            setIsPdfjsLoaded(true);
+          }
+        };
+        script.addEventListener('load', handleLoad);
+        return () => script.removeEventListener('load', handleLoad);
+      }
+      return;
+    }
+
+    script = document.createElement('script');
+    script.id = 'pdfjs-script';
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.async = true;
+    const handleOnload = () => {
+      const pdfjsLib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+      if (pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        setIsPdfjsLoaded(true);
+      }
+    };
+    script.onload = handleOnload;
+    document.body.appendChild(script);
+  }, [isMobile]);
 
   const fetchPreview = useCallback(async () => {
     try {
@@ -265,11 +418,15 @@ const Preview = () => {
 
               {pdfUrl ? (
                 <div className="relative">
-                  <iframe
-                    src={`${pdfUrl}#toolbar=0`}
-                    className="w-full h-[580px]"
-                    title="Resume Preview"
-                  />
+                  {isMobile ? (
+                    <MobilePDFPreview url={pdfUrl} isPdfjsLoaded={isPdfjsLoaded} />
+                  ) : (
+                    <iframe
+                      src={`${pdfUrl}#toolbar=0`}
+                      className="w-full h-[580px]"
+                      title="Resume Preview"
+                    />
+                  )}
                   {/* Watermark overlay */}
                   {!isPaid && (
                     <div className="absolute inset-0 pointer-events-none flex
