@@ -274,6 +274,76 @@ const downloadCoverLetterPDF = async (req, res) => {
   }
 };
 
+// PUT /api/resume/:id
+const updateResume = async (req, res) => {
+  try {
+    const { structuredData, rawInput, templateId, fontId, colorId } = req.body;
+
+    const resume = await Resume.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resume not found'
+      });
+    }
+
+    if (rawInput) {
+      console.log('📤 Sending to Claude API for regeneration...');
+      const newlyStructuredData = await structureResumeData(rawInput);
+      resume.rawInput = rawInput;
+      resume.structuredData = newlyStructuredData;
+    } else if (structuredData) {
+      resume.structuredData = structuredData;
+    }
+    if (templateId) resume.templateId = templateId;
+    if (fontId)     resume.fontId     = fontId;
+    if (colorId)    resume.colorId    = colorId;
+
+    // Regenerate LaTeX
+    console.log('📝 Regenerating LaTeX code for updated resume...');
+    resume.latexCode = buildLatexCode(
+      resume.structuredData,
+      resume.templateId,
+      resume.fontId,
+      resume.colorId,
+      false
+    );
+
+    // If cover letter was already generated, update it to match new resume content
+    if (resume.coverLetterText) {
+      console.log('📤 Re-generating Cover Letter text for updated details...');
+      const updatedCoverLetterText = await generateCoverLetterText(resume.structuredData);
+      resume.coverLetterText = updatedCoverLetterText;
+      resume.coverLetterLatexCode = buildCoverLetterLatex(
+        resume.structuredData,
+        updatedCoverLetterText,
+        resume.fontId,
+        resume.colorId
+      );
+      console.log('✅ Cover letter updated');
+    }
+
+    await resume.save();
+    console.log('✅ Resume updated:', resume._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Resume updated successfully',
+      resume
+    });
+  } catch (err) {
+    console.error('❌ Update resume error:', err.message);
+    res.status(500).json({
+      success: false,
+      message: err.message || 'Server error'
+    });
+  }
+};
+
 module.exports = {
   generateResume,
   getAllResumes,
@@ -282,5 +352,6 @@ module.exports = {
   downloadPDF,
   deleteResume,
   generateCoverLetter,
-  downloadCoverLetterPDF
+  downloadCoverLetterPDF,
+  updateResume
 };

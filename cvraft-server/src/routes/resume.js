@@ -8,7 +8,8 @@ const {
   downloadPDF,
   deleteResume,
   generateCoverLetter,
-  downloadCoverLetterPDF
+  downloadCoverLetterPDF,
+  updateResume
 } = require('../controllers/resumeController');
 const { protect } = require('../middleware/authMiddleware');
 const { FONTS, COLORS } = require('../services/latexService');
@@ -33,6 +34,7 @@ router.get('/:id/cover-letter/pdf',  protect, downloadCoverLetterPDF);
 router.get('/:id/preview',            protect, previewResume);   // Free watermarked
 router.get('/:id/pdf',                protect, downloadPDF);     // Paid only
 router.get('/:id',                    protect, getResume);
+router.put('/:id',                    protect, updateResume);
 router.delete('/:id',                 protect, deleteResume);
 
 module.exports = router;

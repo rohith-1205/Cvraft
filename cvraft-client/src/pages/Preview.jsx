@@ -109,7 +109,7 @@ const MobilePDFPreview = ({ url, isPdfjsLoaded }) => {
 const Preview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token } = useResumeStore();
+  const { token, setRawText, setCurrentResumeId } = useResumeStore();
 
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPayLoading, setIsPayLoading] = useState(false);
@@ -124,6 +124,14 @@ const Preview = () => {
   const [coverLetterText, setCoverLetterText] = useState('');
   const [isCoverLetterLoading, setIsCoverLetterLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('pro');
+
+  // Editor states
+  const [sidebarTab, setSidebarTab] = useState('downloads'); // downloads | edit
+  const [activeSection, setActiveSection] = useState('personal'); // personal | education | experience | projects | skills | extras
+  const [formData, setFormData] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [rawInput, setRawInput] = useState('');
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Detect country and get localized pricing — Razorpay still charges INR internally
   const { pricing, isLoading: isPricingLoading } = usePricing();
@@ -207,6 +215,216 @@ const Preview = () => {
     }
   }, [id]);
 
+  const fetchResumeData = useCallback(async () => {
+    try {
+      const res = await api.get(`/api/resume/${id}`);
+      if (res.data.success && res.data.resume) {
+        setFormData(res.data.resume.structuredData);
+        const fetchedRawInput = res.data.resume.rawInput || '';
+        setRawInput(fetchedRawInput);
+        setRawText(fetchedRawInput);
+        setCurrentResumeId(id);
+      }
+    } catch (err) {
+      console.error('Error fetching resume data:', err);
+    }
+  }, [id, setRawText, setCurrentResumeId]);
+
+  // Editor mutation handlers
+  const handleFieldChange = (key, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleArrayChange = (section, index, field, value) => {
+    setFormData(prev => {
+      const updatedSection = [...(prev[section] || [])];
+      updatedSection[index] = {
+        ...updatedSection[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        [section]: updatedSection
+      };
+    });
+  };
+
+  const handlePointChange = (section, itemIndex, pointIndex, value) => {
+    setFormData(prev => {
+      const updatedItems = [...(prev[section] || [])];
+      const updatedPoints = [...(updatedItems[itemIndex]?.points || [])];
+      updatedPoints[pointIndex] = value;
+      updatedItems[itemIndex] = {
+        ...updatedItems[itemIndex],
+        points: updatedPoints
+      };
+      return {
+        ...prev,
+        [section]: updatedItems
+      };
+    });
+  };
+
+  const addEducation = () => {
+    setFormData(prev => ({
+      ...prev,
+      education: [...(prev.education || []), { degree: '', college: '', year: '', cgpa: '' }]
+    }));
+  };
+
+  const removeEducation = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      education: (prev.education || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const addExperience = () => {
+    setFormData(prev => ({
+      ...prev,
+      experience: [...(prev.experience || []), { company: '', role: '', duration: '', points: [''] }]
+    }));
+  };
+
+  const removeExperience = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      experience: (prev.experience || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const addExperiencePoint = (expIndex) => {
+    setFormData(prev => {
+      const updatedExp = [...(prev.experience || [])];
+      updatedExp[expIndex] = {
+        ...updatedExp[expIndex],
+        points: [...(updatedExp[expIndex]?.points || []), '']
+      };
+      return { ...prev, experience: updatedExp };
+    });
+  };
+
+  const removeExperiencePoint = (expIndex, pointIndex) => {
+    setFormData(prev => {
+      const updatedExp = [...(prev.experience || [])];
+      updatedExp[expIndex] = {
+        ...updatedExp[expIndex],
+        points: (updatedExp[expIndex]?.points || []).filter((_, i) => i !== pointIndex)
+      };
+      return { ...prev, experience: updatedExp };
+    });
+  };
+
+  const addProject = () => {
+    setFormData(prev => ({
+      ...prev,
+      projects: [...(prev.projects || []), { name: '', techStack: '', points: [''] }]
+    }));
+  };
+
+  const removeProject = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      projects: (prev.projects || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const addProjectPoint = (projIndex) => {
+    setFormData(prev => {
+      const updatedProj = [...(prev.projects || [])];
+      updatedProj[projIndex] = {
+        ...updatedProj[projIndex],
+        points: [...(updatedProj[projIndex]?.points || []), '']
+      };
+      return { ...prev, projects: updatedProj };
+    });
+  };
+
+  const removeProjectPoint = (projIndex, pointIndex) => {
+    setFormData(prev => {
+      const updatedProj = [...(prev.projects || [])];
+      updatedProj[projIndex] = {
+        ...updatedProj[projIndex],
+        points: (updatedProj[projIndex]?.points || []).filter((_, i) => i !== pointIndex)
+      };
+      return { ...prev, projects: updatedProj };
+    });
+  };
+
+  const handleSkillsChange = (category, value) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: {
+        ...(prev.skills || {}),
+        [category]: value.split(',').map(s => s.trim())
+      }
+    }));
+  };
+
+  const handleExtrasChange = (section, index, value) => {
+    setFormData(prev => {
+      const updated = [...(prev[section] || [])];
+      updated[index] = value;
+      return { ...prev, [section]: updated };
+    });
+  };
+
+  const addExtraItem = (section) => {
+    setFormData(prev => ({
+      ...prev,
+      [section]: [...(prev[section] || []), '']
+    }));
+  };
+
+  const removeExtraItem = (section, index) => {
+    setFormData(prev => ({
+      ...prev,
+      [section]: (prev[section] || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSaveChanges = async () => {
+    setIsSaving(true);
+    setError('');
+    try {
+      const res = await api.put(`/api/resume/${id}`, {
+        structuredData: formData
+      });
+      if (res.data.success) {
+        await fetchPreview();
+      }
+    } catch (err) {
+      console.error('Failed to update resume:', err);
+      setError(err.response?.data?.message || 'Failed to save changes.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRegeneratePrompt = async () => {
+    setIsRegenerating(true);
+    setError('');
+    try {
+      const res = await api.put(`/api/resume/${id}`, {
+        rawInput: rawInput
+      });
+      if (res.data.success) {
+        await fetchPreview();
+        if (res.data.resume?.structuredData) {
+          setFormData(res.data.resume.structuredData);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to regenerate resume:', err);
+      setError(err.response?.data?.message || 'Failed to regenerate resume.');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   // Load Razorpay script
   useEffect(() => {
     const script = document.createElement('script');
@@ -220,7 +438,7 @@ const Preview = () => {
     };
   }, []);
 
-  // Fetch watermarked preview and check status
+  // Fetch watermarked preview, check status, and load structured data
   useEffect(() => {
     if (!token) {
       navigate('/login');
@@ -230,8 +448,9 @@ const Preview = () => {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchPreview();
       checkPaymentStatus();
+      fetchResumeData();
     }
-  }, [id, token, navigate, fetchPreview, checkPaymentStatus]);
+  }, [id, token, navigate, fetchPreview, checkPaymentStatus, fetchResumeData]);
 
   // Disable Right Click & Screenshot Shortcuts for Unpaid users
   useEffect(() => {
@@ -389,7 +608,7 @@ const Preview = () => {
 
   return (
     <div className="min-h-screen bg-transparent py-10 px-6">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
 
         {/* Header */}
         <div className="text-center mb-8">
@@ -450,152 +669,724 @@ const Preview = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
-            
-            {/* Payment / Download Box */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              {isPaid ? (
-                <div className="space-y-4">
-                  <div className="bg-green-50 text-green-700 p-4 rounded-xl text-center">
-                    <p className="font-bold text-lg">Resume Unlocked!</p>
-                    <p className="text-sm">You have {remainingDownloads} downloads left.</p>
-                  </div>
-                  <button
-                    onClick={handleDownloadPDF}
-                    className="w-full bg-blue-600 text-white py-4 rounded-xl
-                    font-bold text-lg hover:bg-blue-700 transition shadow-lg
-                    flex items-center justify-center gap-2">
-                    <span>⬇️</span> Download PDF
-                  </button>
-                  
-                  {/* Cover Letter Section for Pro/Bundle */}
-                  {hasCoverLetter && (
-                    <div className="pt-4 border-t border-gray-100">
-                      <h4 className="font-bold text-gray-900 mb-3">Cover Letter</h4>
-                      {coverLetterText ? (
-                        <div className="space-y-3">
-                          <div className="bg-gray-50 p-3 rounded-lg text-xs
-                            text-gray-600 max-h-32 overflow-y-auto">
-                            {coverLetterText}
-                          </div>
-                          <button
-                            onClick={handleDownloadCoverLetter}
-                            className="w-full bg-indigo-600 text-white py-3 rounded-xl
-                            font-semibold hover:bg-indigo-700 transition flex
-                            items-center justify-center gap-2">
-                            <span>📄</span> Download CL
-                          </button>
+          <div className="space-y-4">
+
+            {/* Sidebar Tabs */}
+            <div className="flex bg-gray-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setSidebarTab('downloads')}
+                className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  sidebarTab === 'downloads'
+                    ? 'bg-white shadow-sm font-extrabold'
+                    : 'hover:opacity-80'
+                }`}
+                style={{ color: sidebarTab === 'downloads' ? '#0f172a' : '#556b82' }}
+              >
+                ⚙️ Downloads & Plans
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarTab('edit')}
+                className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  sidebarTab === 'edit'
+                    ? 'bg-white shadow-sm font-extrabold'
+                    : 'hover:opacity-80'
+                }`}
+                style={{ color: sidebarTab === 'edit' ? '#0f172a' : '#556b82' }}
+              >
+                ✏️ Edit Content
+              </button>
+            </div>
+
+            {sidebarTab === 'downloads' && (
+              <div className="space-y-6">
+                {/* Payment / Download Box */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                  {isPaid ? (
+                    <div className="space-y-4">
+                      <div className="bg-green-50 text-green-700 p-4 rounded-xl text-center border border-green-200">
+                        <p className="font-bold text-lg" style={{ color: '#166534' }}>Resume Unlocked!</p>
+                        <p className="text-sm" style={{ color: '#166534' }}>You have {remainingDownloads} downloads left.</p>
+                      </div>
+                      <button
+                        onClick={handleDownloadPDF}
+                        className="w-full bg-blue-600 text-white py-4 rounded-xl
+                        font-bold text-lg hover:bg-blue-700 transition shadow-lg
+                        flex items-center justify-center gap-2">
+                        <span>⬇️</span> Download PDF
+                      </button>
+                      
+                      {/* Cover Letter Section for Pro/Bundle */}
+                      {hasCoverLetter && (
+                        <div className="pt-4 border-t border-gray-100">
+                          <h4 className="font-bold text-slate-800 mb-3">Cover Letter</h4>
+                          {coverLetterText ? (
+                            <div className="space-y-3">
+                              <div className="bg-gray-50 p-3 rounded-lg text-xs
+                                text-slate-600 max-h-32 overflow-y-auto leading-relaxed border border-gray-200">
+                                {coverLetterText}
+                              </div>
+                              <button
+                                onClick={handleDownloadCoverLetter}
+                                className="w-full bg-indigo-600 text-white py-3 rounded-xl
+                                font-semibold hover:bg-indigo-700 transition flex
+                                items-center justify-center gap-2">
+                                <span>📄</span> Download CL
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={handleGenerateCoverLetter}
+                              disabled={isCoverLetterLoading}
+                              className="w-full border-2 border-indigo-600 text-indigo-600
+                              py-3 rounded-xl font-semibold hover:bg-indigo-50
+                              transition disabled:opacity-50">
+                              {isCoverLetterLoading ? 'Generating...' : '✨ Generate AI Cover Letter'}
+                            </button>
+                          )}
                         </div>
-                      ) : (
-                        <button
-                          onClick={handleGenerateCoverLetter}
-                          disabled={isCoverLetterLoading}
-                          className="w-full border-2 border-indigo-600 text-indigo-600
-                          py-3 rounded-xl font-semibold hover:bg-indigo-50
-                          transition disabled:opacity-50">
-                          {isCoverLetterLoading ? 'Generating...' : '✨ Generate AI Cover Letter'}
-                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      <div className="text-center">
+                        <p className="text-slate-500 text-sm font-semibold">Select a Plan</p>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {['basic', 'pro', 'bundle'].map((planKey) => {
+                          const planMeta = {
+                            basic: { name: 'Basic', desc: '1 Resume Download' },
+                            pro: { name: 'Pro (Popular)', desc: '1 Resume + ATS check' },
+                            bundle: { name: 'Bundle', desc: '3 Resumes + Cover Letter' }
+                          }[planKey];
+                          
+                          const planPricing = pricing.plans[planKey];
+                          const displayPrice = isPricingLoading ? '...' : formatPrice(planPricing.displayAmount, pricing.currency, pricing.locale);
+                          const isSelected = selectedPlan === planKey;
+                          
+                          return (
+                            <button
+                              key={planKey}
+                              type="button"
+                              onClick={() => setSelectedPlan(planKey)}
+                              className={`w-full text-left p-3.5 rounded-xl border-2 transition flex items-center justify-between ${
+                                isSelected 
+                                  ? 'border-blue-600 bg-blue-50/50 shadow-sm' 
+                                  : 'border-gray-100 hover:border-gray-200 bg-white'
+                              }`}
+                            >
+                              <div>
+                                <span className="font-bold text-sm text-slate-800">{planMeta.name}</span>
+                                <p className="text-xs text-slate-400 mt-0.5">{planMeta.desc}</p>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-extrabold text-sm text-slate-800">{displayPrice}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        onClick={() => handlePayment(selectedPlan)}
+                        disabled={isPayLoading}
+                        className="w-full bg-blue-600 text-white py-3.5 rounded-xl
+                        font-bold text-base hover:bg-blue-700 transition shadow-lg
+                        disabled:opacity-50">
+                        {isPayLoading ? 'Processing...' : 'Unlock Now'}
+                      </button>
+
+                      <ul className="space-y-1.5 pt-1">
+                        {['Clean PDF Export', 'ATS Optimized', 'Priority Support'].map(f => (
+                          <li key={f} className="flex items-center gap-2 text-xs text-slate-600">
+                            <span className="text-green-600 font-bold">✓</span> {f}
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Error Message */}
+                      {error && (
+                        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs text-center border border-red-200">
+                          {error}
+                        </div>
                       )}
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="space-y-5">
-                  <div className="text-center">
-                    <p className="text-gray-500 text-sm font-semibold">Select a Plan</p>
-                  </div>
 
-                  <div className="space-y-2.5">
-                    {['basic', 'pro', 'bundle'].map((planKey) => {
-                      const planMeta = {
-                        basic: { name: 'Basic', desc: '1 Resume Download' },
-                        pro: { name: 'Pro (Popular)', desc: '1 Resume + ATS check' },
-                        bundle: { name: 'Bundle', desc: '3 Resumes + Cover Letter' }
-                      }[planKey];
-                      
-                      const planPricing = pricing.plans[planKey];
-                      const displayPrice = isPricingLoading ? '...' : formatPrice(planPricing.displayAmount, pricing.currency, pricing.locale);
-                      const isSelected = selectedPlan === planKey;
-                      
-                      return (
-                        <button
-                          key={planKey}
-                          type="button"
-                          onClick={() => setSelectedPlan(planKey)}
-                          className={`w-full text-left p-3.5 rounded-xl border-2 transition flex items-center justify-between ${
-                            isSelected 
-                              ? 'border-blue-600 bg-blue-50/50 shadow-sm' 
-                              : 'border-gray-100 hover:border-gray-200 bg-white'
-                          }`}
-                        >
-                          <div>
-                            <span className="font-bold text-sm text-gray-800">{planMeta.name}</span>
-                            <p className="text-xs text-gray-400 mt-0.5">{planMeta.desc}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-extrabold text-sm text-gray-800">{displayPrice}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
+                {/* Navigation Shortcuts */}
+                <div className="space-y-3">
                   <button
-                    onClick={() => handlePayment(selectedPlan)}
-                    disabled={isPayLoading}
-                    className="w-full bg-blue-600 text-white py-3.5 rounded-xl
-                    font-bold text-base hover:bg-blue-700 transition shadow-lg
-                    disabled:opacity-50">
-                    {isPayLoading ? 'Processing...' : 'Unlock Now'}
+                    onClick={() => {
+                      setRawText(rawInput);
+                      navigate('/build');
+                    }}
+                    className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4
+                    font-semibold hover:bg-gray-50 transition text-sm flex items-center justify-center gap-2 text-slate-700"
+                  >
+                    <span>← Edit Resume</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4
+                    font-semibold hover:bg-gray-50 transition text-sm flex items-center justify-center gap-2 text-slate-700"
+                  >
+                    <span>📁 My Resumes</span>
+                  </button>
+                </div>
+
+                {/* Help Box */}
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                  <h4 className="font-bold text-slate-800 mb-2">Need help?</h4>
+                  <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                    If you face any issues during payment or download, reach out to our support.
+                  </p>
+                  <a href="mailto:synchabit@gmail.com"
+                    className="text-blue-600 text-xs font-semibold hover:underline">
+                    synchabit@gmail.com
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {sidebarTab === 'edit' && (
+              formData ? (
+                <div className="space-y-4">
+                  {/* Editor Accordions */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4 max-h-[580px] overflow-y-auto">
+                    
+                    {/* Accordion 0: AI Prompt / Raw Input Details */}
+                    <div className="border-b border-gray-100 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(activeSection === 'rawInput' ? '' : 'rawInput')}
+                        className="w-full flex justify-between items-center py-1 text-left font-bold text-sm text-slate-800 hover:text-blue-600 transition"
+                      >
+                        <span>✨ Edit Raw Input (Regenerate AI)</span>
+                        <span className="text-xs">{activeSection === 'rawInput' ? '▲' : '▼'}</span>
+                      </button>
+                      {activeSection === 'rawInput' && (
+                        <div className="pt-3 space-y-3">
+                          <div className="bg-yellow-50 border border-yellow-100 p-2.5 rounded-lg">
+                            <p className="text-[11px] text-yellow-800 leading-normal">
+                              ⚠️ <strong>Warning:</strong> Re-running the AI will overwrite any manual section changes you made below.
+                            </p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Raw Details Prompt</label>
+                            <textarea
+                              value={rawInput}
+                              onChange={(e) => {
+                                setRawInput(e.target.value);
+                                setRawText(e.target.value);
+                              }}
+                              rows={6}
+                              className="w-full border border-gray-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none leading-relaxed"
+                              placeholder="Paste your raw details here..."
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRegeneratePrompt}
+                            disabled={isRegenerating || !rawInput.trim()}
+                            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold text-xs hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {isRegenerating ? (
+                              <>
+                                <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                </svg>
+                                Regenerating...
+                              </>
+                            ) : '✨ Re-run AI Extraction'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 1: Personal Info & Summary */}
+                    <div className="border-b border-gray-100 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(activeSection === 'personal' ? '' : 'personal')}
+                        className="w-full flex justify-between items-center py-1 text-left font-bold text-sm text-slate-800 hover:text-blue-600 transition"
+                      >
+                        <span>👤 Contact & Summary</span>
+                        <span className="text-xs">{activeSection === 'personal' ? '▲' : '▼'}</span>
+                      </button>
+                      {activeSection === 'personal' && (
+                        <div className="pt-3 space-y-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Name</label>
+                            <input
+                              type="text"
+                              value={formData.name || ''}
+                              onChange={(e) => handleFieldChange('name', e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">Email</label>
+                              <input
+                                type="email"
+                                value={formData.email || ''}
+                                onChange={(e) => handleFieldChange('email', e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">Phone</label>
+                              <input
+                                type="text"
+                                value={formData.phone || ''}
+                                onChange={(e) => handleFieldChange('phone', e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">LinkedIn</label>
+                              <input
+                                type="text"
+                                value={formData.linkedin || ''}
+                                onChange={(e) => handleFieldChange('linkedin', e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-500 mb-1">GitHub</label>
+                              <input
+                                type="text"
+                                value={formData.github || ''}
+                                onChange={(e) => handleFieldChange('github', e.target.value)}
+                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Professional Summary</label>
+                            <textarea
+                              value={formData.summary || ''}
+                              onChange={(e) => handleFieldChange('summary', e.target.value)}
+                              rows={4}
+                              className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none leading-relaxed"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 2: Education */}
+                    <div className="border-b border-gray-100 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(activeSection === 'education' ? '' : 'education')}
+                        className="w-full flex justify-between items-center py-1 text-left font-bold text-sm text-slate-800 hover:text-blue-600 transition"
+                      >
+                        <span>🎓 Education</span>
+                        <span className="text-xs">{activeSection === 'education' ? '▲' : '▼'}</span>
+                      </button>
+                      {activeSection === 'education' && (
+                        <div className="pt-3 space-y-4">
+                          {(formData.education || []).map((edu, idx) => (
+                            <div key={idx} className="bg-gray-50 p-3 rounded-xl space-y-2 relative border border-gray-100">
+                              <button
+                                type="button"
+                                onClick={() => removeEducation(idx)}
+                                className="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xs font-semibold"
+                              >
+                                Remove
+                              </button>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">College / University</label>
+                                <input
+                                  type="text"
+                                  value={edu.college || ''}
+                                  onChange={(e) => handleArrayChange('education', idx, 'college', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">Degree</label>
+                                <input
+                                  type="text"
+                                  value={edu.degree || ''}
+                                  onChange={(e) => handleArrayChange('education', idx, 'degree', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-xs font-semibold text-slate-500 mb-1">Year</label>
+                                  <input
+                                    type="text"
+                                    value={edu.year || ''}
+                                    onChange={(e) => handleArrayChange('education', idx, 'year', e.target.value)}
+                                    className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-slate-500 mb-1">CGPA / GPA</label>
+                                  <input
+                                    type="text"
+                                    value={edu.cgpa || ''}
+                                    onChange={(e) => handleArrayChange('education', idx, 'cgpa', e.target.value)}
+                                    className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={addEducation}
+                            className="w-full border border-dashed border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 py-2 rounded-xl text-xs font-bold transition"
+                          >
+                            + Add Education
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 3: Experience */}
+                    <div className="border-b border-gray-100 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(activeSection === 'experience' ? '' : 'experience')}
+                        className="w-full flex justify-between items-center py-1 text-left font-bold text-sm text-slate-800 hover:text-blue-600 transition"
+                      >
+                        <span>💼 Work Experience</span>
+                        <span className="text-xs">{activeSection === 'experience' ? '▲' : '▼'}</span>
+                      </button>
+                      {activeSection === 'experience' && (
+                        <div className="pt-3 space-y-4">
+                          {(formData.experience || []).map((exp, idx) => (
+                            <div key={idx} className="bg-gray-50 p-3 rounded-xl space-y-3 relative border border-gray-100">
+                              <button
+                                type="button"
+                                onClick={() => removeExperience(idx)}
+                                className="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xs font-semibold"
+                              >
+                                Remove
+                              </button>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">Company</label>
+                                <input
+                                  type="text"
+                                  value={exp.company || ''}
+                                  onChange={(e) => handleArrayChange('experience', idx, 'company', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">Role</label>
+                                <input
+                                  type="text"
+                                  value={exp.role || ''}
+                                  onChange={(e) => handleArrayChange('experience', idx, 'role', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">Duration</label>
+                                <input
+                                  type="text"
+                                  value={exp.duration || ''}
+                                  onChange={(e) => handleArrayChange('experience', idx, 'duration', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              
+                              {/* Experience Points */}
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Bullet Points</label>
+                                {(exp.points || []).map((pt, ptIdx) => (
+                                  <div key={ptIdx} className="flex gap-2 items-center">
+                                    <span className="text-gray-400 text-xs">•</span>
+                                    <input
+                                      type="text"
+                                      value={pt || ''}
+                                      onChange={(e) => handlePointChange('experience', idx, ptIdx, e.target.value)}
+                                      className="flex-1 border border-gray-200 rounded-lg p-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeExperiencePoint(idx, ptIdx)}
+                                      className="text-gray-400 hover:text-red-500 text-xs font-bold px-1"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => addExperiencePoint(idx)}
+                                  className="text-blue-500 hover:text-blue-700 text-xs font-bold flex items-center gap-1 mt-1"
+                                >
+                                  + Add Point
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={addExperience}
+                            className="w-full border border-dashed border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 py-2 rounded-xl text-xs font-bold transition"
+                          >
+                            + Add Experience
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 4: Projects */}
+                    <div className="border-b border-gray-100 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(activeSection === 'projects' ? '' : 'projects')}
+                        className="w-full flex justify-between items-center py-1 text-left font-bold text-sm text-slate-800 hover:text-blue-600 transition"
+                      >
+                        <span>🎨 Projects</span>
+                        <span className="text-xs">{activeSection === 'projects' ? '▲' : '▼'}</span>
+                      </button>
+                      {activeSection === 'projects' && (
+                        <div className="pt-3 space-y-4">
+                          {(formData.projects || []).map((proj, idx) => (
+                            <div key={idx} className="bg-gray-50 p-3 rounded-xl space-y-3 relative border border-gray-100">
+                              <button
+                                type="button"
+                                onClick={() => removeProject(idx)}
+                                className="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xs font-semibold"
+                              >
+                                Remove
+                              </button>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">Project Name</label>
+                                <input
+                                  type="text"
+                                  value={proj.name || ''}
+                                  onChange={(e) => handleArrayChange('projects', idx, 'name', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-500 mb-1">Tech Stack</label>
+                                <input
+                                  type="text"
+                                  value={proj.techStack || ''}
+                                  onChange={(e) => handleArrayChange('projects', idx, 'techStack', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                              
+                              {/* Project Points */}
+                              <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Bullet Points</label>
+                                {(proj.points || []).map((pt, ptIdx) => (
+                                  <div key={ptIdx} className="flex gap-2 items-center">
+                                    <span className="text-gray-400 text-xs">•</span>
+                                    <input
+                                      type="text"
+                                      value={pt || ''}
+                                      onChange={(e) => handlePointChange('projects', idx, ptIdx, e.target.value)}
+                                      className="flex-1 border border-gray-200 rounded-lg p-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeProjectPoint(idx, ptIdx)}
+                                      className="text-gray-400 hover:text-red-500 text-xs font-bold px-1"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => addProjectPoint(idx)}
+                                  className="text-blue-500 hover:text-blue-700 text-xs font-bold flex items-center gap-1 mt-1"
+                                >
+                                  + Add Point
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={addProject}
+                            className="w-full border border-dashed border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 py-2 rounded-xl text-xs font-bold transition"
+                          >
+                            + Add Project
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 5: Technical Skills */}
+                    <div className="border-b border-gray-100 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(activeSection === 'skills' ? '' : 'skills')}
+                        className="w-full flex justify-between items-center py-1 text-left font-bold text-sm text-slate-800 hover:text-blue-600 transition"
+                      >
+                        <span>🛠️ Technical Skills</span>
+                        <span className="text-xs">{activeSection === 'skills' ? '▲' : '▼'}</span>
+                      </button>
+                      {activeSection === 'skills' && (
+                        <div className="pt-3 space-y-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Languages (comma-separated)</label>
+                            <input
+                              type="text"
+                              value={(formData.skills?.languages || []).join(', ')}
+                              onChange={(e) => handleSkillsChange('languages', e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Frameworks (comma-separated)</label>
+                            <input
+                              type="text"
+                              value={(formData.skills?.frameworks || []).join(', ')}
+                              onChange={(e) => handleSkillsChange('frameworks', e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Tools (comma-separated)</label>
+                            <input
+                              type="text"
+                              value={(formData.skills?.tools || []).join(', ')}
+                              onChange={(e) => handleSkillsChange('tools', e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg p-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accordion 6: Achievements & Certifications */}
+                    <div className="pb-1">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSection(activeSection === 'extras' ? '' : 'extras')}
+                        className="w-full flex justify-between items-center py-1 text-left font-bold text-sm text-slate-800 hover:text-blue-600 transition"
+                      >
+                        <span>🏆 Achievements & Certs</span>
+                        <span className="text-xs">{activeSection === 'extras' ? '▲' : '▼'}</span>
+                      </button>
+                      {activeSection === 'extras' && (
+                        <div className="pt-3 space-y-4">
+                          {/* Achievements */}
+                          <div className="space-y-2">
+                            <label className="block text-xs font-bold text-slate-600">Achievements</label>
+                            {(formData.achievements || []).map((a, idx) => (
+                              <div key={idx} className="flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  value={a || ''}
+                                  onChange={(e) => handleExtrasChange('achievements', idx, e.target.value)}
+                                  className="flex-1 border border-gray-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeExtraItem('achievements', idx)}
+                                  className="text-gray-400 hover:text-red-500 text-xs font-bold"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => addExtraItem('achievements')}
+                              className="text-blue-500 hover:text-blue-700 text-xs font-bold flex items-center gap-1"
+                            >
+                              + Add Achievement
+                            </button>
+                          </div>
+
+                          {/* Certifications */}
+                          <div className="space-y-2">
+                            <label className="block text-xs font-bold text-slate-600">Certifications</label>
+                            {(formData.certifications || []).map((c, idx) => (
+                              <div key={idx} className="flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  value={c || ''}
+                                  onChange={(e) => handleExtrasChange('certifications', idx, e.target.value)}
+                                  className="flex-1 border border-gray-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeExtraItem('certifications', idx)}
+                                  className="text-gray-400 hover:text-red-500 text-xs font-bold"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => addExtraItem('certifications')}
+                              className="text-blue-500 hover:text-blue-700 text-xs font-bold flex items-center gap-1"
+                            >
+                              + Add Certification
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+
+                  {/* Save button */}
+                  <button
+                    onClick={handleSaveChanges}
+                    disabled={isSaving}
+                    className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-base hover:bg-blue-700 transition shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                        Saving & Recompiling...
+                      </>
+                    ) : '✨ Save & Update Preview'}
                   </button>
 
-                  <ul className="space-y-1.5 pt-1">
-                    {['Clean PDF Export', 'ATS Optimized', 'Priority Support'].map(f => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-gray-500">
-                        <span className="text-green-500">✓</span> {f}
-                      </li>
-                    ))}
-                  </ul>
+                  {/* Navigation Shortcut inside Edit tab */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRawText(rawInput);
+                      navigate('/build');
+                    }}
+                    className="w-full bg-white rounded-xl border border-gray-200 py-3 text-xs font-bold text-slate-700 hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                  >
+                    <span>← Edit on Builder Page (Full Options)</span>
+                  </button>
 
                   {/* Error Message */}
                   {error && (
-                    <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs text-center">
-                      {error}
+                    <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs text-center border border-red-200">
+                      ⚠️ {error}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-
-            {/* Navigation Shortcuts */}
-            <div className="space-y-3">
-              <button
-                onClick={() => navigate('/build')}
-                className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4
-                font-semibold hover:bg-gray-50 transition text-sm flex items-center justify-center gap-2"
-              >
-                <span className="text-gray-700">← Edit Resume</span>
-              </button>
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4
-                font-semibold hover:bg-gray-50 transition text-sm flex items-center justify-center gap-2"
-              >
-                <span className="text-gray-700">📁 My Resumes</span>
-              </button>
-            </div>
-
-            {/* Help Box */}
-            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
-              <h4 className="font-bold text-gray-900 mb-2">Need help?</h4>
-              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-                If you face any issues during payment or download, reach out to our support.
-              </p>
-              <a href="mailto:synchabit@gmail.com"
-                className="text-blue-600 text-xs font-semibold hover:underline">
-                synchabit@gmail.com
-              </a>
-            </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center text-gray-400">
+                  <div className="animate-spin text-2xl mb-2">⏳</div>
+                  <p className="text-xs">Loading resume details...</p>
+                </div>
+              )
+            )}
 
           </div>
         </div>

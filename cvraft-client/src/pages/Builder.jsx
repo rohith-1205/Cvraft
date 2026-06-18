@@ -34,7 +34,8 @@ const Builder = () => {
     selectedTemplate, 
     setSelectedTemplate,
     rawText: storeRawText,
-    setRawText: setStoreRawText
+    setRawText: setStoreRawText,
+    currentResumeId
   } = useResumeStore();
 
   const [rawText,          setRawText]          = useState(storeRawText || '');
@@ -45,6 +46,12 @@ const Builder = () => {
   const [isLoading,        setIsLoading]        = useState(false);
   const [error,            setError]            = useState('');
   const [charCount,        setCharCount]        = useState((storeRawText || '').length);
+
+  // Sync store rawText to local state
+  useEffect(() => {
+    setRawText(storeRawText || '');
+    setCharCount((storeRawText || '').length);
+  }, [storeRawText]);
 
   // Fetch font and color options from backend
   useEffect(() => {
@@ -92,6 +99,17 @@ const Builder = () => {
   return (
     <div className="min-h-screen bg-transparent py-10 px-6">
       <div className="max-w-6xl mx-auto">
+        {currentResumeId && (
+          <div className="mb-6 flex justify-start">
+            <button
+              onClick={() => navigate(`/preview/${currentResumeId}`)}
+              className="group inline-flex items-center gap-2 px-5 py-2.5 bg-white/80 backdrop-blur-md rounded-full border border-blue-100 text-sm font-semibold text-slate-700 hover:bg-gray-50 hover:text-blue-600 transition-all duration-300 shadow-sm"
+            >
+              <span className="transition-transform group-hover:-translate-x-1 duration-300">←</span> 
+              Cancel & Return to Preview
+            </button>
+          </div>
+        )}
 
         {/* Header */}
         <div className="text-center mb-10">
