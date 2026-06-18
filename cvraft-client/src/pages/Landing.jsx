@@ -74,7 +74,7 @@ const Landing = () => {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-block bg-blue-500 bg-opacity-40 text-blue-100
             px-4 py-1.5 rounded-full text-sm font-medium mb-6">
-            🚀 Powered by AI + LaTeX
+            Powered by AI + LaTeX
           </div>
           <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
             Build Your Professional CV with AI —<br />
