@@ -1,51 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inconsolata:wght@200..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inconsolata:wght@200..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Typography Override ─────────────────────────────────────────── */
-body {
-  font-family: 'Inter', sans-serif !important;
+/* ── Global Background (Vibrant Blue/Indigo) ───────────────────────── */
+html, body {
+  font-family: 'Outfit', sans-serif;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #3730a3 100%) !important;
+  background-attachment: fixed !important;
+  min-height: 100vh;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
-  letter-spacing: -0.025em !important;
-}
-
-/* ── Custom Floating Animations for Depth Orbs ────────────────────── */
-@keyframes float-slow {
-  0%, 100% {
-    transform: translateY(0px) scale(1);
-  }
-  50% {
-    transform: translateY(-20px) scale(1.05);
-  }
-}
-
-@keyframes float-delay {
-  0%, 100% {
-    transform: translateY(0px) scale(1.05);
-  }
-  50% {
-    transform: translateY(20px) scale(1);
-  }
-}
-
-.animate-float-slow {
-  animation: float-slow 10s ease-in-out infinite;
-}
-
-.animate-float-delay {
-  animation: float-delay 12s ease-in-out infinite;
-}
-
-/* ── Global Background (Premium Deep Space Blue/Indigo) ──────────────── */
-html, body {
-  background: radial-gradient(circle at 50% 0%, #0a142c 0%, #050b18 50%, #02040a 100%) !important;
-  background-attachment: fixed !important;
-  min-height: 100vh;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 /* Frosted Glass Navbar */
@@ -54,15 +22,12 @@ nav.bg-white\/80 {
   border-color: rgba(37, 99, 235, 0.15) !important;
 }
 
-/* Card overrides (Glassmorphic white cards popping off the blue background) */
+/* Card overrides (Solid white cards popping off the blue background) */
 .bg-white {
-  background-color: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background-color: #ffffff !important;
   color: #1e293b !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04), 
-              0 1px 1px 0 rgba(255, 255, 255, 0.3) inset !important;
+  border-color: rgba(37, 99, 235, 0.15) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Border overrides */
@@ -219,14 +184,10 @@ input::placeholder, textarea::placeholder {
   border-color: #4f46e5 !important;
 }
 
-/* Whitish Pink Light Cards Styling (Glassmorphic) */
+/* Whitish Pink Light Cards Styling */
 .bg-pink-light {
-  background-color: rgba(255, 241, 242, 0.8) !important; /* frosted pinkish white */
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(254, 205, 211, 0.4) !important; /* soft pink border */
-  box-shadow: 0 10px 30px -10px rgba(244, 63, 94, 0.05),
-              0 1px 1px 0 rgba(255, 255, 255, 0.4) inset !important;
+  background-color: #fff1f2 !important; /* whitish rose/pink */
+  border-color: #fecdd3 !important; /* light rose/pink border */
 }
 
 .bg-pink-light .text-gray-900, .bg-pink-light .text-gray-800, .bg-pink-light .text-gray-700 {
@@ -239,30 +200,4 @@ input::placeholder, textarea::placeholder {
 
 .bg-pink-light .text-gray-500, .bg-pink-light .text-gray-400 {
   color: #475569 !important;
-}
-
-/* ── Footer Link Hover Underline Transition ──────────────────────── */
-.footer-link {
-  position: relative;
-  transition: color 0.3s ease;
-  display: inline-block;
-}
-
-.footer-link::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: linear-gradient(to right, #3b82f6, #60a5fa);
-  transition: width 0.3s ease;
-}
-
-.footer-link:hover {
-  color: #ffffff !important;
-}
-
-.footer-link:hover::after {
-  width: 100%;
 }
